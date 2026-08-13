@@ -78,7 +78,8 @@ loom {
 // because it commits+pushes — not a build responsibility.
 // =====================================================================
 
-// label -> pack_format. Single target now that overlays are gone.
+// label -> pack_format. Now using datapack overlays in source for multi-version support (1.20.3-1.21.1 + 26.x).
+// Keep single "full" target that preserves the overlayed pack.mcmeta.
 def TARGETS = [
     "full" : 107
 ]
@@ -235,6 +236,16 @@ TARGETS.each { label, packFormat ->
             copy {
                 from(macroEngineSrc)
                 into(stageDir)
+            }
+
+            // 1_20_5 overlay: only applies to macroEngine, only overrides data/.
+            // Source dir must exist at datapacks/macroEngine/1_20_5/data/ for this to do anything.
+            def overlay120_5 = new File(macroEngineSrc, "1_20_5/data")
+            if (overlay120_5.exists()) {
+                copy {
+                    from(overlay120_5)
+                    into(new File(stageDir, "data"))
+                }
             }
 
             // Patch pack.mcmeta: set pack_format only. No overlay entries to filter anymore.
