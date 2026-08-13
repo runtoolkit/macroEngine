@@ -4,7 +4,6 @@
 
 [![CI](https://github.com/runtoolkit/macroEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/runtoolkit/macroEngine/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Download on Modrinth](https://img.shields.io/badge/Download%20on-Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/datapack/macroengine)
 
 ---
 > Current version: **v6.0.2**
