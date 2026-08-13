@@ -327,6 +327,7 @@ tasks.register("repack") {
                     include "pack.mcmeta"
                     include "pack.png"
                     include "data/**"
+                    include "1_20_5/data/**"
                 }
                 into(scratch)
             }
