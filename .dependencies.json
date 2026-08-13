@@ -7,12 +7,14 @@
       "license": "MIT",
       "namespace": "player_action",
       "load_tag": "#player_action:load",
+      "renamed_as": "macroengine_player",
       "note": "Embedded as-is. Provides player event hooks (click, movement, block interaction)."
     }
   ],
   "required": [
     {
       "id": "lanternload",
+      "renamed_as": "macroengine_load",
       "source": "https://github.com/LanternMC/load",
       "note": "Already bundled via data/load namespace."
     }
