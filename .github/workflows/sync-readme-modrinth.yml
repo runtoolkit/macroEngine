@@ -25,7 +25,7 @@ jobs:
           ")
 
           HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X PATCH "https://api.modrinth.com/v2/project/macroengine" \
+            -X PATCH "https://api.modrinth.com/v2/project/advanced-macro-engine" \
             -H "Authorization: $MODRINTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$BODY_JSON")
