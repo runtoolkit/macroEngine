@@ -33,7 +33,7 @@
                 "obfuscated": false
               },
               {
-                "text": "26.2",
+                "text": "1.20.3-1.21.1 + 26.x",
                 "color": "#e3ff57",
                 "bold": false,
                 "italic": false,
@@ -44,14 +44,27 @@
         ]
       },
       {
-        "text": " | v6.0.2",
+        "text": " | v6.0.3-overlays",
         "color": "#ffaa00",
         "bold": false,
         "italic": false
       }
     ],
-    "min_format": 107,
-    "max_format": 107
+    "pack_format": 107,
+    "supported_formats": {
+      "min_inclusive": 40,
+      "max_inclusive": 107
+    },
+    "min_format": [40, 0],
+    "max_format": [107, 0]
+  },
+  "overlays": {
+    "entries": [
+      {
+        "formats": [40, 42],
+        "directory": "1_20_5"
+      }
+    ]
   },
   "features": {
     "enabled": [
