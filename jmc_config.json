@@ -1,0 +1,7 @@
+{
+    "namespace": "macroengine_jmc",
+    "description": "MacroEngine Datapack compiled with JMC",
+    "pack_format": 107,
+    "target": "main.jmc",
+    "output": "./build/jmc_datapack"
+}
