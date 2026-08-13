@@ -1,9 +1,4 @@
-# 🔧 MacroEngine
-
-> ## 🗄️ ARCHIVED
-> **This project is archived and no longer maintained.** No new features, bug fixes, or security patches will be released. The information below reflects the state of the project at the time of archival and is kept for reference only.
->
-> Use at your own risk — known issues will not be fixed, and newer Minecraft versions are not guaranteed to be compatible.
+# 🔧 macroEngine
 
 **Minecraft Java Edition 26.2 | Multiplayer-Safe | Pure Datapack**
 
