@@ -119,6 +119,14 @@ append_env \
   '[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"' \
   'sdkman-init.sh'
 
+# ── beet ────────────────────────────────────────────────────────────
+echo "📦 Installing beet..."
+if command -v beet &>/dev/null; then
+  echo "  Already installed: $(beet -version)"
+else
+pip install beet --break-system-packages -q 2>&1 | tail -5
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────
 echo ""
 echo "✅ Versions:"
