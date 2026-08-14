@@ -1,4 +1,5 @@
 cd /workspaces/macroEngine/macroEngine-beet && \
+rm beet.json && \
 rm -rf src* build/dist build/macroengine_data_pack && \
 python3 ../datapack2mcbeet.py && \
 beet build && \
