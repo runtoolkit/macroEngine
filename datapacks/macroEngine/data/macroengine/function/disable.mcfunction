@@ -1,5 +1,3 @@
-playsound minecraft:block.note_block.pling master @s ~ ~ ~ 4 2
-
 function macroengine:core/disable/main
 
-tellraw @s [{"text":"To restart:"}," ",{"text":"/datapack enable 'file/macroengine.zip'","color":"aqua","bold":true,"italic":false,"click_event": {"action": "run_command", "command": "/datapack enable 'file/macroengine.zip'"}},", ",{"text":"/datapack enable 'file/macroengine'","color":"aqua","bold":true,"italic":false,"click_event": {"action": "run_command", "command": "/datapack enable 'file/macroengine'"}}," or",{"text":"/datapack enable 'file/macroengine-full.zip'","color":"aqua","bold":true,"italic":false,"click_event": {"action": "run_command", "command": "/datapack enable 'file/macroengine-full.zip'"}}]
+tellraw @s [{"text":"To restart:"}," ",{"text":"/datapack enable 'file/macroEngine.zip'","color":"aqua","bold":true,"italic":false,"click_event": {"action": "run_command", "command": "/datapack enable 'file/macroEngine.zip'"}},", ",{"text":"/datapack enable 'file/macroEngine'","color":"aqua","bold":true,"italic":false,"click_event": {"action": "run_command", "command": "/datapack enable 'file/macroEngine'"}}," or",{"text":"/datapack enable 'file/macroEngine-full.zip'","color":"aqua","bold":true,"italic":false,"click_event": {"action": "run_command", "command": "/datapack enable 'file/macroEngine-full.zip'"}}]
