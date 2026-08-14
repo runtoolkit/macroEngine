@@ -1,0 +1,6 @@
+cd /workspaces/macroEngine/macroEngine-beet && \
+rm -rf src* build/dist build/macroengine_data_pack && \
+python3 ../datapack2mcbeet.py && \
+beet build && \
+mkdir -p build/dist && \
+(cd build/macroengine_data_pack && zip -r ../dist/macroEngine.zip .)

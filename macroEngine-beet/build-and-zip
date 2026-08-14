@@ -1,1 +1,0 @@
-rm -rf build/dist && beet build && mkdir -p build/dist && (cd build/macroengine_data_pack && zip -r ../dist/macroEngine.zip .)
