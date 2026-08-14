@@ -2,23 +2,23 @@
 """
 datapack2mcbeet.py
 
-runtoolkit/macroEngine reposundaki datapacks/macroEngine klasorunu indirir
-ve beet (mcbeet.dev) projesi formatina cevirir.
+Downloads the datapacks/macroEngine folder from the runtoolkit/macroEngine repository
+and converts it to the beet (mcbeet.dev) project format.
 
-Kaynak yapi:
+Source structure:
     datapacks/macroEngine/
-        pack.mcmeta          -> overlays.entries[0] = {"formats": [40,42], "directory": "1_20_5"}
-        data/                -> ana pack (pack_format 40-107)
-        1_20_5/data/         -> overlay (sadece format 40-42, yani 1.20.5)
+        pack.mcmeta         -> overlays.entries[0] = {"formats": [40,42], "directory": "1_20_5"}
+        data/               -> main pack (pack_format 40-107)
+        1_20_5/data/        -> overlay (only format 40-42, i.e., 1.20.5)
 
-Beet, overlay'leri beet.json icinde "data_pack.overlays" ile ayri bir
-load kaynagi olarak tanimlar; ana pack_format/description bilgisini de
-pack.mcmeta'dan aynen tasir.
+Beet defines overlays in beet.json as a separate load source using
+"data_pack.overlays"; it carries over the main pack_format/description info
+directly from pack.mcmeta.
 
-Kullanim:
-    python3 datapack2mcbeet.py [hedef_dizin]
+Usage:
+    python3 datapack2mcbeet.py [target_directory]
 
-Varsayilan hedef_dizin: ./macroEngine-beet
+Default target_directory: ./macroEngine-beet
 """
 
 import json
@@ -35,7 +35,7 @@ DATAPACK_SUBPATH = "datapacks/macroEngine"
 
 
 def download_repo(tmp_dir: Path) -> Path:
-    """Repo tarball'ini indirir ve extract eder, kok klasoru dondurur."""
+    """Downloads and extracts the repo tarball, returns the root directory."""
     tarball = tmp_dir / "repo.tar.gz"
     url = f"https://codeload.github.com/{REPO}/tar.gz/refs/heads/{BRANCH}"
     subprocess.run(
@@ -43,7 +43,7 @@ def download_repo(tmp_dir: Path) -> Path:
         check=True,
     )
     if not tarball.exists() or tarball.stat().st_size < 1000:
-        sys.exit(f"Indirme basarisiz oldu: {url}")
+        sys.exit(f"Download failed: {url}")
 
     with tarfile.open(tarball) as tf:
         tf.extractall(tmp_dir)
@@ -55,50 +55,50 @@ def download_repo(tmp_dir: Path) -> Path:
 def main() -> None:
     target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("macroEngine-beet")
     if target.exists():
-        sys.exit(f"Hedef dizin zaten var: {target}")
+        sys.exit(f"Target directory already exists: {target}")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
-        print(f"[1/5] {REPO} indiriliyor...")
+        print(f"[1/5] Downloading {REPO}...")
         repo_root = download_repo(tmp_dir)
 
         dp_root = repo_root / DATAPACK_SUBPATH
         if not dp_root.exists():
-            sys.exit(f"Beklenen yol bulunamadi: {DATAPACK_SUBPATH}")
+            sys.exit(f"Expected path not found: {DATAPACK_SUBPATH}")
 
         pack_mcmeta_path = dp_root / "pack.mcmeta"
         pack_mcmeta = json.loads(pack_mcmeta_path.read_text(encoding="utf-8"))
 
-        print("[2/5] Proje iskeleti olusturuluyor...")
+        print("[2/5] Creating project structure...")
         target.mkdir(parents=True)
         src_main = target / "src"
         src_main.mkdir()
 
-        # Ana data/ -> src/data
+        # Main data/ -> src/data
         shutil.copytree(dp_root / "data", src_main / "data")
 
-        # Overlay bilgisini pack.mcmeta'dan oku, her overlay klasoru icin
-        # ayri bir src_<overlay_adi>/data olustur.
-        # ONEMLI: beet.json'daki data_pack.overlays alani SADECE pack.mcmeta
-        # icine format meta verisi yazar (bkz. beet/toolchain/project.py,
-        # PackOverlayConfig). Overlay icerigini gercekten yuklemek icin
-        # ctx.data.overlays[directory] uzerinden calisan bir plugin gerekir;
-        # bu yuzden asagida load_overlays.py adinda bir plugin de uretiyoruz.
+        # Read overlay info from pack.mcmeta, create a separate
+        # src_<overlay_name>/data directory for each overlay folder.
+        # IMPORTANT: The data_pack.overlays field in beet.json ONLY writes
+        # format metadata to pack.mcmeta (see beet/toolchain/project.py,
+        # PackOverlayConfig). To actually load overlay content, a plugin
+        # working via ctx.data.overlays[directory] is required; therefore,
+        # we also generate a plugin named load_overlays.py below.
         overlays_cfg = {}
         overlay_entries = pack_mcmeta.get("overlays", {}).get("entries", [])
         for entry in overlay_entries:
             overlay_dir_name = entry["directory"]
             overlay_src_data = dp_root / overlay_dir_name / "data"
             if not overlay_src_data.exists():
-                print(f"  [uyari] overlay kaynagi yok, atlaniyor: {overlay_dir_name}")
+                print(f"  [warning] overlay source does not exist, skipping: {overlay_dir_name}")
                 continue
 
-            print(f"[3/5] Overlay tasiniyor: {overlay_dir_name} "
+            print(f"[3/5] Moving overlay: {overlay_dir_name} "
                   f"(formats {entry.get('formats')})")
-            # Kaynak (repo icindeki) klasor adiyla, beet projesindeki
-            # source klasor adini ayri tutuyoruz: source_dir diskte nereden
-            # okunacagini, overlay_dir_name ise pack.mcmeta'daki (ve
-            # dolayisiyla oyunun bekledigi) overlay klasor adini gosterir.
+            # Keep the source directory name (in the repo) and the source directory
+            # name in the beet project separate: source_dir indicates where it will be
+            # read from disk, while overlay_dir_name shows the overlay folder name
+            # in pack.mcmeta (and thus expected by the game).
             source_dir = f"src_{overlay_dir_name}"
             shutil.copytree(overlay_src_data, target / source_dir / "data")
             overlays_cfg[overlay_dir_name] = {
@@ -106,7 +106,7 @@ def main() -> None:
                 "formats": entry.get("formats"),
             }
 
-        # description'i pack.mcmeta'dan aynen tasi (raw json text component).
+        # Carry over description directly from pack.mcmeta (raw json text component).
         description = pack_mcmeta["pack"]["description"]
         pack_format = pack_mcmeta["pack"]["pack_format"]
         supported_formats = pack_mcmeta["pack"].get("supported_formats")
@@ -124,11 +124,10 @@ def main() -> None:
             beet_config["data_pack"]["supported_formats"] = supported_formats
 
         if overlays_cfg:
-            # data_pack.overlays: SADECE pack.mcmeta'ya formats/directory
-            # meta bilgisini yazar (PackOverlayConfig -> yalnizca formats,
-            # directory, min_format, max_format alanlarini kabul eder;
-            # extra="forbid" oldugu icin "load" gibi baska bir alan
-            # eklemek beet tarafindan reddedilir).
+            # data_pack.overlays: ONLY writes formats/directory meta info to
+            # pack.mcmeta (PackOverlayConfig -> accepts only formats, directory,
+            # min_format, max_format fields; since extra="forbid", adding another
+            # field like "load" will be rejected by beet).
             beet_config["data_pack"]["overlays"] = [
                 {
                     "directory": overlay_dir_name,
@@ -136,13 +135,13 @@ def main() -> None:
                 }
                 for overlay_dir_name, cfg in overlays_cfg.items()
             ]
-            # Gercek dosya yuklemesi icin plugin gerekiyor -> require listesi
-            # require, Python dotted-path bekler (dosya yolu degil).
-            # load_overlays.py -> "load_overlays" modulu, "load_overlays"
-            # fonksiyonu (varsayilan olarak fonksiyon adiyla ayni).
+            # Plugin required for actual file loading -> require list
+            # require expects a Python dotted-path (not a file path).
+            # load_overlays.py -> "load_overlays" module, "load_overlays"
+            # function (defaults to matching the function name).
             beet_config["require"] = ["load_overlays"]
 
-        print("[4/5] beet.json yaziliyor...")
+        print("[4/5] Writing beet.json...")
         (target / "beet.json").write_text(
             json.dumps(beet_config, indent=4, ensure_ascii=False),
             encoding="utf-8",
@@ -154,10 +153,10 @@ def main() -> None:
                 "",
                 "",
                 "def beet_default(ctx: Context):",
-                '    """Her overlay klasorunu ctx.data.overlays[dir] icine yukler.',
+                '    """Loads each overlay folder into ctx.data.overlays[dir].',
                 "",
-                "    beet.json'daki data_pack.overlays alani sadece pack.mcmeta'ya",
-                "    format meta verisi yazar; asil dosya yuklemesi burada yapiliyor.",
+                "    The data_pack.overlays field in beet.json only writes format",
+                "    metadata to pack.mcmeta; actual file loading is done here.",
                 '    """',
             ]
             for overlay_dir_name, cfg in overlays_cfg.items():
@@ -173,16 +172,16 @@ def main() -> None:
             (target / "load_overlays.py").write_text(
                 "\n".join(plugin_lines), encoding="utf-8"
             )
-            print("  -> load_overlays.py plugin'i olusturuldu "
-                  "(overlay icerigini yukler)")
+            print("  -> Created load_overlays.py plugin "
+                  "(loads overlay contents)")
 
-        print("[5/5] Tamamlandi.")
+        print("[5/5] Done.")
 
-    print(f"\nProje hazir: {target}/")
-    print("Icerik:")
+    print(f"\nProject ready: {target}/")
+    print("Contents:")
     for p in sorted(target.iterdir()):
         print(f"  {p.name}")
-    print("\nBuild etmek icin:")
+    print("\nTo build:")
     print(f"  cd {target} && beet build")
 
 
