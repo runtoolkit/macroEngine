@@ -1,6 +1,6 @@
 # macroengine_load:load/all — full init pipeline (no fork / rt_origin / confirm gates)
 
-tellraw @a ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"Starting macroengine...","color":"gray"}]
+tellraw @a ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"Starting macroEngine...","color":"gray"}]
 
 # forceload classic marker chunk (legacy features)
 forceload add -30000000 1600
@@ -14,4 +14,4 @@ function macroengine:config
 
 data modify storage macroengine:engine global.loaded set value 1b
 
-schedule function macroengine_load:load/final 1s
+schedule function macroengine_load:load/final 2s
