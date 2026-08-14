@@ -44,8 +44,7 @@ execute unless data storage macroengine:engine {global:{loaded:1b}} run function
 # Guard checks the SAME storage/path the trigger condition checks (macroengine:engine global.loaded).
 execute if data storage macroengine:engine {global:{loaded:1b}} run return 0
 
-function dl_load:load/yes
-function dl_load:load/fork_no
+function macroengine_load:main
 
 data modify storage macroengine:engine global.loaded set value 1b
 ```
@@ -99,7 +98,7 @@ Provides deterministic load order, version tracking, and pre/load/post-load hook
 execute if score #MacroEngine load.status matches 1.. run say MacroEngine is loaded
 
 # Get version (major*10000 + minor*100 + patch → v6.0.2 = 601)
-scoreboard players get MacroEngine load.status
+scoreboard players get #MacroEngine load.status
 ```
 
 ### StringLib
