@@ -55,9 +55,12 @@ publishing {
 }
 
 // =====================================================================
-// Datapack / Resourcepack zip packaging — injected into :jar
-// Zips packs/macroEngine-Datapack and packs/macroEngine-Resourcepack
-// and drops the zips next to the mod jar in build/libs/.
+// Datapack / Resourcepack zip packaging — standalone task.
+// Not wired into build/jar; run explicitly, e.g. as a separate CI step
+// after `./gradlew build`:  ./gradlew packZips
+//
+// Zips are written straight to build/libs/, run AFTER `build` has
+// already finished so remapJar/assemble can't wipe them out.
 // =====================================================================
 
 def datapackSrc     = file("packs/macroEngine-Datapack")
@@ -81,6 +84,8 @@ tasks.register("zipResourcepack", Zip) {
 	destinationDirectory.set(layout.buildDirectory.dir("libs"))
 }
 
-tasks.named("jar") {
+tasks.register("packZips") {
+	group = "build"
+	description = "Runs zipDatapack and zipResourcepack. Intended to run as its own step, after ./gradlew build has completed."
 	dependsOn "zipDatapack", "zipResourcepack"
 }
