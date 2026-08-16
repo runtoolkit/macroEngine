@@ -36,6 +36,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.TypedActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +95,7 @@ public final class MacroEngineMod implements ModInitializer {
 			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
 				wands.onUseItem(sp, hand);
 			}
-			return ActionResult.PASS;
+			return TypedActionResult.pass(player.getStackInHand(hand));
 		});
 		UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
 			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
