@@ -85,7 +85,7 @@ jobs:
         run: |
           set +x
           chmod +x gradlew
-          ./gradlew zipFull --no-daemon
+          ./gradlew zipMacroEngine --no-daemon
           ./gradlew release --no-daemon
           set -x
 
