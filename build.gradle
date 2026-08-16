@@ -36,11 +36,10 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:26.2"
-    
+
     implementation "net.fabricmc:fabric-loader:0.19.3"
     implementation "net.fabricmc.fabric-api:fabric-api:0.155.2+26.2"
-    
-    // Gametest dependencies
+
     gametestImplementation "net.fabricmc:fabric-loader:0.19.3"
     gametestImplementation "net.fabricmc.fabric-api:fabric-api:0.155.2+26.2"
 }
@@ -71,29 +70,17 @@ loom {
     }
 }
 
-// =====================================================================
-// MacroEngine — Datapack build system (pure Gradle, no plugins required)
-// Replaces: build.yml, dp-lint.yml, lint-and-build.yml
-// generate-build-py.yml logic is kept in .github/workflows/ci.yml
-// because it commits+pushes — not a build responsibility.
-// =====================================================================
-
-// label -> pack_format. Now using datapack overlays in source for multi-version support (1.20.3-1.21.1 + 26.x).
-// Keep single "full" target that preserves the overlayed pack.mcmeta.
 def TARGETS = [
-    "full" : 107
+    "full"   : 107,
+    "1_20_5" : 18   // 1.20.5-1.20.6, uses the 1_20_5/data overlay
 ]
 
-// Source roots after the datapacks/ + resourcepacks/ restructure.
-def macroEngineSrc     = file("datapacks/macroEngine")
+def macroEngineSrc = file("datapacks/macroEngine")
 def extensionsSrc  = file("datapacks/macroengine_extensions")
 
-def buildRoot   = layout.buildDirectory.dir("datapack").get().asFile
-def distRoot    = layout.buildDirectory.dir("dist").get().asFile
+def buildRoot = layout.buildDirectory.dir("datapack").get().asFile
+def distRoot  = layout.buildDirectory.dir("dist").get().asFile
 
-// ---------------------------------------------------------------------
-// Lint: JSON validity
-// ---------------------------------------------------------------------
 tasks.register("lintJson") {
     group = "verification"
     description = "Validates every *.json file parses as JSON"
@@ -118,9 +105,6 @@ tasks.register("lintJson") {
     }
 }
 
-// ---------------------------------------------------------------------
-// Lint: mcfunction pre-check (BOM / null byte / CRLF)
-// ---------------------------------------------------------------------
 tasks.register("lintMcfunctionPrecheck") {
     group = "verification"
     description = "Scans *.mcfunction files for BOM, null bytes, CRLF"
@@ -151,11 +135,6 @@ tasks.register("lintMcfunctionPrecheck") {
     }
 }
 
-// ---------------------------------------------------------------------
-// Lint: mecha syntax validation
-// Mirrors dp-lint.yml's compat patching — applied to a scratch copy only,
-// source files are never touched.
-// ---------------------------------------------------------------------
 tasks.register("lintMecha", Exec) {
     group = "verification"
     description = "Runs mecha against a patched scratch copy of the datapack"
@@ -194,9 +173,6 @@ tasks.register("lintMecha", Exec) {
     commandLine "mecha", "."
 }
 
-// ---------------------------------------------------------------------
-// Lint: pack.mcmeta presence + validity
-// ---------------------------------------------------------------------
 tasks.register("lintPackMcmeta") {
     group = "verification"
     description = "Checks pack.mcmeta exists and is valid JSON for macroEngine and macroengine_extensions"
@@ -217,9 +193,6 @@ tasks.register("lint") {
     dependsOn "lintJson", "lintMcfunctionPrecheck", "lintMecha", "lintPackMcmeta"
 }
 
-// ---------------------------------------------------------------------
-// Build: one task per matrix target (1_20_3, 1_20_5, pre_1_21_4, ...)
-// ---------------------------------------------------------------------
 def buildTasks = []
 
 TARGETS.each { label, packFormat ->
@@ -233,22 +206,35 @@ TARGETS.each { label, packFormat ->
             delete(stageDir)
             mkdir(stageDir)
 
+            // FIX: 1_20_5/ overlay source klasoru artik base kopyadan haric tutuluyor.
+            // Eskiden buradaki exclude olmadigi icin datapacks/macroEngine/1_20_5/**
+            // stageDir/1_20_5/... olarak da kopyalaniyordu; asagidaki overlay copy'si
+            // sadece stageDir/data/ uzerine yaziyordu ama base kopyada 1_20_5 klasoru
+            // data/ ile ayni isim uzayinda bir namespace/klasorle cakisirsa (ör. bir
+            // namespace'in adi "1_20_5" olsaydi ya da baska bir surec bu klasoru
+            // data/ altina tasiyip birlestirseydi) override ile base içerik karisirdi.
+            // Net kural: overlay kaynagi ASLA base kopyanin parcasi olmamali, sadece
+            // explicit ikinci copy adimiyla data/ altina uygulanmali.
             copy {
-                from(macroEngineSrc)
+                from(macroEngineSrc) {
+                    exclude "1_20_5/**"
+                }
                 into(stageDir)
             }
 
-            // 1_20_5 overlay: only applies to macroEngine, only overrides data/.
-            // Source dir must exist at datapacks/macroEngine/1_20_5/data/ for this to do anything.
-            def overlay120_5 = new File(macroEngineSrc, "1_20_5/data")
-            if (overlay120_5.exists()) {
-                copy {
-                    from(overlay120_5)
-                    into(new File(stageDir, "data"))
+            // 1_20_5 overlay: SADECE "1_20_5" (legacy, pack_format 18) hedefine uygulanir.
+            // "full" hedefinde uygulanmaz — aksi halde en guncel pack_format'a eski
+            // surum override'lari karisir ve geriye uyumluluk yamasi ileri surumu bozar.
+            if (label == "1_20_5") {
+                def overlay120_5 = new File(macroEngineSrc, "1_20_5/data")
+                if (overlay120_5.exists()) {
+                    copy {
+                        from(overlay120_5)
+                        into(new File(stageDir, "data"))
+                    }
                 }
             }
 
-            // Patch pack.mcmeta: set pack_format only. No overlay entries to filter anymore.
             def metaFile = new File(stageDir, "pack.mcmeta")
             def meta = new JsonSlurper().parse(metaFile)
             meta.pack.pack_format = packFormat
@@ -268,9 +254,6 @@ TARGETS.each { label, packFormat ->
     buildTasks << zipTask
 }
 
-// ---------------------------------------------------------------------
-// macroengine_extensions: separate zip target, built alongside macroEngine.
-// ---------------------------------------------------------------------
 def extensionsStageDir = new File(buildRoot, "extensions")
 
 def prepareExtensionsTask = tasks.register("prepareExtensions") {
@@ -305,10 +288,6 @@ tasks.register("buildAll") {
     finalizedBy "repack"
 }
 
-// ---------------------------------------------------------------------
-// Repack: strips every dist zip down to pack.mcmeta + data/ only.
-// Deletes the original zip and writes the trimmed one in its place.
-// ---------------------------------------------------------------------
 tasks.register("repack") {
     group = "build"
     description = "Trims each dist zip to pack.mcmeta + data/ only, replacing the original"
@@ -322,12 +301,17 @@ tasks.register("repack") {
             delete(scratch)
             mkdir(scratch)
 
+            // FIX: "1_20_5/data/**" include'u silindi. Tek hedef "full" (pack_format 107),
+            // nihai zip'te boyle bir klasor OLMAMALI. Bu satir eskiden overlay kaynagindan
+            // artakalan dosyalari (eger prepare adiminda base kopyaya karismislarsa) sessizce
+            // zip'e tasiyip, gercek datapack yapisini bozan "1_20_5/" adinda gecersiz bir
+            // ust klasor birakabiliyordu. Artik repack sadece gercekten var olmasi gereken
+            // pack.mcmeta + pack.png + data/ icerigini aliyor.
             copy {
                 from(zipTree(zipFile)) {
                     include "pack.mcmeta"
                     include "pack.png"
                     include "data/**"
-                    include "1_20_5/data/**"
                 }
                 into(scratch)
             }
@@ -345,11 +329,6 @@ tasks.register("repack") {
     }
 }
 
-// ---------------------------------------------------------------------
-// Release: reads version from the full build's pack.mcmeta, publishes
-// via gh CLI. Only meaningful on push to main — that branch/event gate
-// stays in ci.yml, not here, since it's CI trigger logic, not a build step.
-// ---------------------------------------------------------------------
 tasks.register("release") {
     group = "publish"
     description = "Creates/updates the GitHub release for the full build"
@@ -389,12 +368,6 @@ tasks.register("release") {
     }
 }
 
-// Clean task is automatically registered by the java plugin.
-
-
-// ---------------------------------------------------------------------
-// createSourceArchive: Copies project files into the archive directory, excluding .git
-// ---------------------------------------------------------------------
 tasks.register('createSourceArchive', Copy) {
     description = 'Copies project files into the archive directory, excluding .git'
     from(rootDir) {
