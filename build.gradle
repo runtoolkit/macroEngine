@@ -140,10 +140,60 @@ tasks.register("lintPackMcmeta") {
     }
 }
 
+// ---------------------------------------------------------------------
+// Lint: tekil (modern, 1.21+) ve cogul (legacy, 1.20.6-) klasor isimleri
+// senkron mu? Ikisi de kaynakta var oluyor (bkz. macroEngine/data/*/function
+// vs functions), build sirasinda her hedef zaten kendi isimlendirmesini
+// seciyor (bkz. prepare${label} task), ama bu iki taraf ICERIK olarak
+// farkli olursa (birinde olup digerinde olmayan dosyalar) sessizce veri
+// kaybi olur — build bunu asla otomatik cozmez, sadece raporlar.
+// ---------------------------------------------------------------------
+tasks.register("lintNamingConsistency") {
+    group = "verification"
+    description = "Reports files that exist under only one of the modern (singular) / legacy (plural) folder names"
+    doLast {
+        def pairs = [
+            ["function", "functions"],
+            ["advancement", "advancements"],
+            ["loot_table", "loot_tables"],
+            ["predicate", "predicates"],
+            ["item_modifier", "item_modifiers"],
+        ]
+        def mismatches = []
+
+        new File(macroEngineSrc, "data").eachDir { nsDir ->
+            pairs.each { modern, legacy ->
+                def modernDir = new File(nsDir, modern)
+                def legacyDir = new File(nsDir, legacy)
+                if (!modernDir.exists() || !legacyDir.exists()) return
+
+                def modernRel = [] as Set
+                modernDir.eachFileRecurse { f -> if (f.isFile()) modernRel << modernDir.toPath().relativize(f.toPath()).toString() }
+                def legacyRel = [] as Set
+                legacyDir.eachFileRecurse { f -> if (f.isFile()) legacyRel << legacyDir.toPath().relativize(f.toPath()).toString() }
+
+                def onlyModern = modernRel - legacyRel
+                def onlyLegacy = legacyRel - modernRel
+
+                onlyModern.each { mismatches << "${nsDir.name}/${modern}/${it}  (only in ${modern}/, missing from ${legacy}/)" }
+                onlyLegacy.each { mismatches << "${nsDir.name}/${legacy}/${it}  (only in ${legacy}/, missing from ${modern}/)" }
+            }
+        }
+
+        if (mismatches) {
+            logger.warn("::warning::${mismatches.size()} file(s) differ between modern (singular) and legacy (plural) folder names:")
+            mismatches.each { logger.warn("  ${it}") }
+            logger.warn("Each build target only takes its matching naming (see prepare\${label}), so these mismatches mean one of the two zips is silently missing content. Fix the source, not the build.")
+        } else {
+            logger.lifecycle("Modern/legacy folder naming is consistent — no mismatched files.")
+        }
+    }
+}
+
 tasks.register("lint") {
     group = "verification"
     description = "Runs all datapack lint checks"
-    dependsOn "lintJson", "lintMcfunctionPrecheck", "lintMecha", "lintPackMcmeta"
+    dependsOn "lintJson", "lintMcfunctionPrecheck", "lintMecha", "lintPackMcmeta", "lintNamingConsistency"
 }
 
 def buildTasks = []
@@ -168,9 +218,25 @@ TARGETS.each { label, packFormat ->
             // data/ altina tasiyip birlestirseydi) override ile base içerik karisirdi.
             // Net kural: overlay kaynagi ASLA base kopyanin parcasi olmamali, sadece
             // explicit ikinci copy adimiyla data/ altina uygulanmali.
+            // Modern (tekil: function, advancement, loot_table, predicate,
+            // item_modifier) ve legacy (cogul: functions, advancements,
+            // loot_tables, predicates, item_modifiers) klasor isimleri kaynakta
+            // AYNI ANDA duruyor. Pack_format 41 (1.20.5-1.20.6) SADECE cogul
+            // isimleri okur, pack_format 107 (full/modern) SADECE tekil isimleri
+            // okur — digerini kopyalamak olu dosya + kafa karistirici cakisma
+            // yaratir (bkz. macroEngine-1_20_5.zip incelemesi: 1517 olu dosya).
+            // Her hedef sadece kendi pack_format'ina ait isimlendirmeyi alir.
+            def modernOnlyDirs = ["**/function/**", "**/advancement/**", "**/loot_table/**", "**/predicate/**", "**/item_modifier/**"]
+            def legacyOnlyDirs = ["**/functions/**", "**/advancements/**", "**/loot_tables/**", "**/predicates/**", "**/item_modifiers/**"]
+
             copy {
                 from(macroEngineSrc) {
                     exclude "1_20_5/**"
+                    if (label == "1_20_5") {
+                        exclude modernOnlyDirs
+                    } else {
+                        exclude legacyOnlyDirs
+                    }
                 }
                 into(stageDir)
             }
