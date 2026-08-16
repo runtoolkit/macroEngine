@@ -2,11 +2,14 @@ package io.runtoolkit.macroengine;
 
 import io.runtoolkit.macroengine.api.bossbar.BossbarService;
 import io.runtoolkit.macroengine.api.cmd.CommandService;
+import io.runtoolkit.macroengine.api.cooldown.CooldownService;
 import io.runtoolkit.macroengine.api.dialog.DialogService;
+import io.runtoolkit.macroengine.api.freeze.FreezeService;
 import io.runtoolkit.macroengine.api.gamerule.GameruleService;
 import io.runtoolkit.macroengine.api.interaction.InteractionService;
 import io.runtoolkit.macroengine.api.item.ItemService;
 import io.runtoolkit.macroengine.api.perm.PermissionService;
+import io.runtoolkit.macroengine.api.scoreboard.ScoreboardService;
 import io.runtoolkit.macroengine.api.title.TitleService;
 import io.runtoolkit.macroengine.api.toggle.ToggleService;
 import io.runtoolkit.macroengine.api.wand.WandService;
@@ -39,6 +42,7 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -85,6 +89,9 @@ public final class MacroEngineMod implements ModInitializer {
 	private final ToggleService toggles = new ToggleService();
 	private final GameruleService gamerules = new GameruleService();
 	private final Batch batch = new Batch();
+	private final FreezeService freeze = new FreezeService();
+	private final ScoreboardService scoreboard = new ScoreboardService();
+	private final CooldownService cooldowns = new CooldownService();
 
 	private MinecraftServer server;
 	private boolean loaded;
@@ -108,18 +115,14 @@ public final class MacroEngineMod implements ModInitializer {
 		});
 
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
-			if (entity instanceof ServerPlayerEntity sp) {
-				events.fire(EventBus.Type.ON_DEATH, sp);
-			}
+			if (entity instanceof ServerPlayerEntity sp) events.fire(EventBus.Type.ON_DEATH, sp);
 		});
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldP, newP, alive) -> {
 			events.fire(EventBus.Type.ON_RESPAWN, newP);
 		});
 
 		UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
-				wands.onUseItem(sp, hand);
-			}
+			if (!world.isClient && player instanceof ServerPlayerEntity sp) wands.onUseItem(sp, hand);
 			return TypedActionResult.pass(player.getStackInHand(hand));
 		});
 		UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
@@ -133,6 +136,12 @@ public final class MacroEngineMod implements ModInitializer {
 			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
 				interactions.fireAttackEntity(sp, entity);
 				events.fire(EventBus.Type.ON_LC, sp);
+			}
+			return ActionResult.PASS;
+		});
+		UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
+				interactions.fireUseBlock(sp, hit);
 			}
 			return ActionResult.PASS;
 		});
@@ -164,7 +173,10 @@ public final class MacroEngineMod implements ModInitializer {
 		tickEngine.register(new TickChannel("input_systems", 1, 0, true, TickEngine::runInputSystems));
 		tickEngine.register(new TickChannel("hook_systems", 1, 0, true, TickEngine::runHookSystems));
 		tickEngine.register(new TickChannel("geo_systems", 5, 3, true, TickEngine::runGeoSystems));
-		tickEngine.register(new TickChannel("wand_systems", 1, 0, true, (s, e) -> e.mod().getWands().tick()));
+		tickEngine.register(new TickChannel("wand_systems", 1, 0, true, (s, e) -> {
+			e.mod().getWands().tick();
+			e.mod().getCooldowns().tick();
+		}));
 	}
 
 	private void onServerStopping(MinecraftServer server) {
@@ -177,6 +189,8 @@ public final class MacroEngineMod implements ModInitializer {
 		debounce.clear();
 		bossbars.clear();
 		batch.clear();
+		freeze.clear();
+		cooldowns.clearAll();
 		events.clear();
 		this.loaded = false;
 		this.server = null;
@@ -222,6 +236,9 @@ public final class MacroEngineMod implements ModInitializer {
 	public ToggleService getToggles() { return toggles; }
 	public GameruleService getGamerules() { return gamerules; }
 	public Batch getBatch() { return batch; }
+	public FreezeService getFreeze() { return freeze; }
+	public ScoreboardService getScoreboard() { return scoreboard; }
+	public CooldownService getCooldowns() { return cooldowns; }
 	public MinecraftServer getServer() { return server; }
 	public boolean isLoaded() { return loaded; }
 }

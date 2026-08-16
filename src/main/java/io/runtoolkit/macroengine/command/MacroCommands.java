@@ -72,6 +72,7 @@ public final class MacroCommands {
 		registerInput(root, mod);
 		registerPerm(root, mod);
 		registerWand(root, mod);
+		registerFreezeScoreboard(root, mod);
 
 		dispatcher.register(root);
 	}
@@ -557,6 +558,63 @@ public final class MacroCommands {
 							StringArgumentType.getString(ctx, "id"), 10,
 							StringArgumentType.getString(ctx, "command"));
 						return 1;
+					})))));
+	}
+
+
+	private static void registerFreezeScoreboard(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
+		root.then(CommandManager.literal("freeze")
+			.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
+				mod.getFreeze().freeze(EntityArgumentType.getPlayer(ctx, "player"));
+				ctx.getSource().sendFeedback(() -> Text.literal("[ME] frozen"), true);
+				return 1;
+			})));
+		root.then(CommandManager.literal("unfreeze")
+			.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
+				mod.getFreeze().unfreeze(EntityArgumentType.getPlayer(ctx, "player"));
+				ctx.getSource().sendFeedback(() -> Text.literal("[ME] unfrozen"), true);
+				return 1;
+			})));
+		root.then(CommandManager.literal("scoreboard")
+			.then(CommandManager.literal("add")
+				.then(CommandManager.argument("name", StringArgumentType.word())
+					.then(CommandManager.argument("display", StringArgumentType.greedyString()).executes(ctx -> {
+						mod.getScoreboard().ensureObjective(ctx.getSource().getServer(),
+							StringArgumentType.getString(ctx, "name"),
+							StringArgumentType.getString(ctx, "display"));
+						return 1;
+					}))))
+			.then(CommandManager.literal("set")
+				.then(CommandManager.argument("objective", StringArgumentType.word())
+					.then(CommandManager.argument("holder", StringArgumentType.word())
+						.then(CommandManager.argument("value", IntegerArgumentType.integer()).executes(ctx -> {
+							mod.getScoreboard().setScore(ctx.getSource().getServer(),
+								StringArgumentType.getString(ctx, "objective"),
+								StringArgumentType.getString(ctx, "holder"),
+								IntegerArgumentType.getInteger(ctx, "value"));
+							return 1;
+						})))))
+			.then(CommandManager.literal("sidebar")
+				.then(CommandManager.argument("objective", StringArgumentType.word()).executes(ctx -> {
+					mod.getScoreboard().setSidebar(ctx.getSource().getServer(),
+						StringArgumentType.getString(ctx, "objective"));
+					return 1;
+				}))));
+		root.then(CommandManager.literal("cooldown")
+			.then(CommandManager.literal("check")
+				.then(CommandManager.argument("key", StringArgumentType.word()).executes(ctx -> {
+					long r = mod.getCooldowns().remaining(StringArgumentType.getString(ctx, "key"));
+					ctx.getSource().sendFeedback(() -> Text.literal("remaining=" + r), false);
+					return (int) Math.min(r, Integer.MAX_VALUE);
+				})))
+			.then(CommandManager.literal("use")
+				.then(CommandManager.argument("key", StringArgumentType.word())
+					.then(CommandManager.argument("ticks", IntegerArgumentType.integer(0)).executes(ctx -> {
+						boolean ok = mod.getCooldowns().tryUse(
+							StringArgumentType.getString(ctx, "key"),
+							IntegerArgumentType.getInteger(ctx, "ticks"));
+						ctx.getSource().sendFeedback(() -> Text.literal(ok ? "ok" : "blocked"), false);
+						return ok ? 1 : 0;
 					})))));
 	}
 

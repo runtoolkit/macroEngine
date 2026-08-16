@@ -3,9 +3,12 @@
   "id": "macroengine",
   "version": "${version}",
   "name": "MacroEngine",
-  "description": "Full Java port of macroengine datapack for Minecraft 1.21.1 (Yarn).",
+  "description": "Java runtime port of macroEngine datapack for Minecraft 1.21.1 (Yarn). Tick channels, queue, schedule, fiber, events, cmd, input, region, wand, perm.",
   "authors": ["runtoolkit"],
-  "contact": { "homepage": "https://github.com/runtoolkit/macroEngine" },
+  "contact": {
+    "homepage": "https://github.com/runtoolkit/macroEngine",
+    "sources": "https://github.com/runtoolkit/macroEngine"
+  },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
@@ -17,5 +20,6 @@
     "minecraft": "~1.21.1",
     "java": ">=21",
     "fabric-api": "*"
-  }
+  },
+  "suggests": {}
 }

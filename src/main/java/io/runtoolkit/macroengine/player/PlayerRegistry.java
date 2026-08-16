@@ -44,6 +44,7 @@ public final class PlayerRegistry {
 	public void onLeave(ServerPlayerEntity player) {
 		PlayerData data = byUuid.get(player.getUuid());
 		if (data != null) data.online = false;
+		MacroEngineMod.get().getFreeze().unfreeze(player);
 	}
 
 	public PlayerData get(UUID uuid) { return byUuid.get(uuid); }
@@ -56,6 +57,7 @@ public final class PlayerRegistry {
 				continue;
 			}
 			if (data.dialogLoadTicks > 0) data.dialogLoadTicks--;
+			MacroEngineMod.get().getFreeze().apply(player);
 		}
 	}
 }
