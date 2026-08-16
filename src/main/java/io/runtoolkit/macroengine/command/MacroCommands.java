@@ -3,6 +3,7 @@ package io.runtoolkit.macroengine.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.runtoolkit.macroengine.MacroEngineMod;
 import io.runtoolkit.macroengine.event.EventBus;
 import io.runtoolkit.macroengine.input.InputValidator;
@@ -23,24 +24,27 @@ public final class MacroCommands {
 	private MacroCommands() {}
 
 	public static void register(CommandDispatcher<ServerCommandSource> dispatcher, MacroEngineMod mod) {
-		var root = CommandManager.literal("macroengine")
+		LiteralArgumentBuilder<ServerCommandSource> root = CommandManager.literal("macroengine")
 			.requires(s -> s.hasPermissionLevel(2));
 
 		root.then(CommandManager.literal("status").executes(ctx -> {
 			ctx.getSource().sendFeedback(() -> Text.literal(mod.getTickEngine().statusText()), false);
 			return 1;
 		}));
+
 		root.then(CommandManager.literal("pause").executes(ctx -> {
 			mod.getTickEngine().pause();
 			ctx.getSource().sendFeedback(() -> Text.literal("[ME] paused"), true);
 			return 1;
 		}));
+
 		root.then(CommandManager.literal("resume").executes(ctx -> {
 			mod.getTickEngine().resume();
 			mod.getConfig().tickPaused = false;
 			ctx.getSource().sendFeedback(() -> Text.literal("[ME] resumed"), true);
 			return 1;
 		}));
+
 		root.then(CommandManager.literal("version").executes(ctx -> {
 			ctx.getSource().sendFeedback(() -> Text.literal(
 				"MacroEngine v" + MacroEngineMod.VERSION
@@ -49,13 +53,30 @@ public final class MacroCommands {
 					+ " queue=" + mod.getTaskQueue().size()), false);
 			return 1;
 		}));
+
 		root.then(CommandManager.literal("debug").executes(ctx -> {
 			mod.getConfig().debug = !mod.getConfig().debug;
 			ctx.getSource().sendFeedback(() -> Text.literal("[ME] debug=" + mod.getConfig().debug), true);
 			return 1;
 		}));
 
-		// channel
+		registerChannel(root, mod);
+		registerRunQueueSchedule(root, mod);
+		registerFiberBatch(root, mod);
+		registerEvent(root, mod);
+		registerInteraction(root, mod);
+		registerToggle(root, mod);
+		registerPlayerHelpers(root, mod);
+		registerBossbar(root, mod);
+		registerRegion(root, mod);
+		registerInput(root, mod);
+		registerPerm(root, mod);
+		registerWand(root, mod);
+
+		dispatcher.register(root);
+	}
+
+	private static void registerChannel(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("channel")
 			.then(CommandManager.literal("list").executes(ctx -> {
 				for (TickChannel c : mod.getTickEngine().channels()) {
@@ -86,8 +107,9 @@ public final class MacroCommands {
 							return 0;
 						});
 					})))));
+	}
 
-		// run / queue / schedule
+	private static void registerRunQueueSchedule(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("run")
 			.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
 				int r = mod.getCommands().runAsServer(ctx.getSource().getServer(),
@@ -95,6 +117,7 @@ public final class MacroCommands {
 				ctx.getSource().sendFeedback(() -> Text.literal("[ME] ran → " + r), true);
 				return r;
 			})));
+
 		root.then(CommandManager.literal("queue")
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("delay", IntegerArgumentType.integer(0))
@@ -115,6 +138,7 @@ public final class MacroCommands {
 				mod.getTaskQueue().clear();
 				return 1;
 			})));
+
 		root.then(CommandManager.literal("schedule")
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("key", StringArgumentType.word())
@@ -147,8 +171,9 @@ public final class MacroCommands {
 						k + " next=" + e.nextTick() + " rep=" + e.repeat()), false));
 				return mod.getSchedules().size();
 			})));
+	}
 
-		// fiber
+	private static void registerFiberBatch(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("fiber")
 			.then(CommandManager.literal("spawn")
 				.then(CommandManager.argument("name", StringArgumentType.word())
@@ -179,7 +204,6 @@ public final class MacroCommands {
 				return n;
 			})));
 
-		// batch
 		root.then(CommandManager.literal("batch")
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
@@ -197,8 +221,9 @@ public final class MacroCommands {
 				mod.getBatch().clear();
 				return 1;
 			})));
+	}
 
-		// event
+	private static void registerEvent(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("event")
 			.then(CommandManager.literal("on")
 				.then(CommandManager.argument("type", StringArgumentType.word())
@@ -220,8 +245,9 @@ public final class MacroCommands {
 					else mod.getEvents().fireCustom(type, ctx.getSource().getPlayer());
 					return 1;
 				}))));
+	}
 
-		// interaction
+	private static void registerInteraction(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("interaction")
 			.then(CommandManager.literal("bind_use")
 				.then(CommandManager.argument("id", StringArgumentType.word())
@@ -264,8 +290,9 @@ public final class MacroCommands {
 				mod.getInteractions().setEnabled(false);
 				return 1;
 			})));
+	}
 
-		// toggle
+	private static void registerToggle(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("toggle")
 			.then(CommandManager.literal("set")
 				.then(CommandManager.argument("key", StringArgumentType.word())
@@ -291,8 +318,9 @@ public final class MacroCommands {
 					ctx.getSource().sendFeedback(() -> Text.literal(k + "=" + v), false));
 				return 1;
 			})));
+	}
 
-		// player helpers
+	private static void registerPlayerHelpers(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("give")
 			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.then(CommandManager.argument("item", StringArgumentType.string())
@@ -302,6 +330,7 @@ public final class MacroCommands {
 							IntegerArgumentType.getInteger(ctx, "count"));
 						return 1;
 					})))));
+
 		root.then(CommandManager.literal("effect")
 			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.then(CommandManager.argument("effect", StringArgumentType.string())
@@ -313,11 +342,13 @@ public final class MacroCommands {
 								IntegerArgumentType.getInteger(ctx, "amp"));
 							return 1;
 						}))))));
+
 		root.then(CommandManager.literal("heal")
 			.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
 				mod.getCommands().heal(EntityArgumentType.getPlayer(ctx, "player"));
 				return 1;
 			})));
+
 		root.then(CommandManager.literal("gamemode")
 			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.then(CommandManager.argument("mode", StringArgumentType.word()).executes(ctx -> {
@@ -325,6 +356,7 @@ public final class MacroCommands {
 						StringArgumentType.getString(ctx, "mode"));
 					return 1;
 				}))));
+
 		root.then(CommandManager.literal("msg")
 			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.then(CommandManager.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
@@ -332,6 +364,7 @@ public final class MacroCommands {
 						StringArgumentType.getString(ctx, "text"));
 					return 1;
 				}))));
+
 		root.then(CommandManager.literal("actionbar")
 			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.then(CommandManager.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
@@ -339,6 +372,7 @@ public final class MacroCommands {
 						StringArgumentType.getString(ctx, "text"));
 					return 1;
 				}))));
+
 		root.then(CommandManager.literal("title")
 			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.then(CommandManager.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
@@ -346,14 +380,16 @@ public final class MacroCommands {
 						StringArgumentType.getString(ctx, "text"), "", 10, 40, 10);
 					return 1;
 				}))));
+
 		root.then(CommandManager.literal("rename")
 			.then(CommandManager.argument("name", StringArgumentType.greedyString()).executes(ctx -> {
 				mod.getItems().renameHeld(ctx.getSource().getPlayerOrThrow(),
 					StringArgumentType.getString(ctx, "name"));
 				return 1;
 			})));
+	}
 
-		// bossbar
+	private static void registerBossbar(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("bossbar")
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("id", StringArgumentType.word())
@@ -384,8 +420,9 @@ public final class MacroCommands {
 					mod.getBossbars().remove(StringArgumentType.getString(ctx, "id"));
 					return 1;
 				}))));
+	}
 
-		// region
+	private static void registerRegion(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("region")
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("id", StringArgumentType.word())
@@ -422,8 +459,9 @@ public final class MacroCommands {
 					mod.getRegionWatch().remove(StringArgumentType.getString(ctx, "id"));
 					return 1;
 				}))));
+	}
 
-		// input
+	private static void registerInput(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("input")
 			.then(CommandManager.literal("summon_cbm").executes(ctx -> {
 				mod.getInput().summonCbm(ctx.getSource().getPlayerOrThrow());
@@ -472,8 +510,9 @@ public final class MacroCommands {
 						StringArgumentType.getString(ctx, "text"));
 					return 1;
 				}))));
+	}
 
-		// perm
+	private static void registerPerm(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("perm")
 			.then(CommandManager.literal("grant")
 				.then(CommandManager.argument("player", EntityArgumentType.player())
@@ -502,8 +541,9 @@ public final class MacroCommands {
 					mod.getPerms().setAdmin(EntityArgumentType.getPlayer(ctx, "player").getUuid(), true);
 					return 1;
 				}))));
+	}
 
-		// wand
+	private static void registerWand(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("wand")
 			.then(CommandManager.literal("list").executes(ctx -> {
 				mod.getWands().list().forEach((id, a) ->
@@ -517,17 +557,20 @@ public final class MacroCommands {
 							StringArgumentType.getString(ctx, "id"), 10,
 							StringArgumentType.getString(ctx, "command"));
 						return 1;
-					}))));
-
-		dispatcher.register(root);
+					})))));
 	}
 
 	private static EventBus.Type parseType(String s) {
-		try { return EventBus.Type.valueOf(s.toUpperCase()); }
-		catch (Exception e) { return null; }
+		try {
+			return EventBus.Type.valueOf(s.toUpperCase());
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
-	private static String nullSafe(String s) { return s == null ? "(none)" : s; }
+	private static String nullSafe(String s) {
+		return s == null ? "(none)" : s;
+	}
 
 	private static int setEnabled(ServerCommandSource src, MacroEngineMod mod, String id, boolean on) {
 		return mod.getTickEngine().find(id).map(c -> {
