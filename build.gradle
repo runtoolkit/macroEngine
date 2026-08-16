@@ -58,10 +58,15 @@ publishing {
 // Datapack / Resourcepack zip packaging — injected into :jar
 // Zips packs/macroEngine-Datapack and packs/macroEngine-Resourcepack
 // and drops the zips next to the mod jar in build/libs/.
+//
+// Zips are written to build/pack-zips/ first (own directory, never
+// touched by Loom's remapJar), then copied into build/libs/ as the
+// LAST step of the build, so remapJar/assemble can't wipe them out.
 // =====================================================================
 
 def datapackSrc     = file("packs/macroEngine-Datapack")
 def resourcepackSrc = file("packs/macroEngine-Resourcepack")
+def packZipDir       = layout.buildDirectory.dir("pack-zips")
 
 tasks.register("zipDatapack", Zip) {
 	group = "build"
@@ -69,7 +74,7 @@ tasks.register("zipDatapack", Zip) {
 	onlyIf { datapackSrc.exists() }
 	from(datapackSrc)
 	archiveFileName.set("macroEngine-Datapack.zip")
-	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+	destinationDirectory.set(packZipDir)
 }
 
 tasks.register("zipResourcepack", Zip) {
@@ -78,9 +83,20 @@ tasks.register("zipResourcepack", Zip) {
 	onlyIf { resourcepackSrc.exists() }
 	from(resourcepackSrc)
 	archiveFileName.set("macroEngine-Resourcepack.zip")
-	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+	destinationDirectory.set(packZipDir)
 }
 
-tasks.named("jar") {
+tasks.register("copyPackZips", Copy) {
+	group = "build"
+	description = "Copies the datapack/resourcepack zips into build/libs/ after everything else has finished"
 	dependsOn "zipDatapack", "zipResourcepack"
+	from(packZipDir)
+	include("*.zip")
+	into(layout.buildDirectory.dir("libs"))
+}
+
+// Run after assemble/build (not just jar) so nothing downstream in the
+// Loom pipeline (remapJar, assemble) can clear build/libs/ afterward.
+tasks.named("build") {
+	finalizedBy "copyPackZips"
 }
