@@ -11,14 +11,12 @@ import io.runtoolkit.macroengine.systems.geo.RegionWatch;
 import io.runtoolkit.macroengine.tick.TickChannel;
 import io.runtoolkit.macroengine.tick.TickEngine;
 import net.minecraft.command.argument.EntityArgumentType;
-import net.minecraft.command.argument.UuidArgumentType;
 import net.minecraft.entity.boss.BossBar;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
-import java.util.UUID;
 
 public final class MacroCommands {
 	private MacroCommands() {}
@@ -72,6 +70,8 @@ public final class MacroCommands {
 		registerInput(root, mod);
 		registerPerm(root, mod);
 		registerWand(root, mod);
+		registerHook(root, mod);
+		registerFreezeScoreboard(root, mod);
 
 		dispatcher.register(root);
 	}
@@ -251,25 +251,68 @@ public final class MacroCommands {
 		root.then(CommandManager.literal("interaction")
 			.then(CommandManager.literal("bind_use")
 				.then(CommandManager.argument("id", StringArgumentType.word())
-					.then(CommandManager.argument("uuid", UuidArgumentType.uuid())
+					.then(CommandManager.argument("target", EntityArgumentType.entity())
 						.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
-							UUID u = UuidArgumentType.getUuid(ctx, "uuid");
+							var entity = EntityArgumentType.getEntity(ctx, "target");
 							mod.getInteractions().bindUse(
-								StringArgumentType.getString(ctx, "id"), u,
+								StringArgumentType.getString(ctx, "id"),
+								entity.getUuid(),
 								StringArgumentType.getString(ctx, "command"));
-							ctx.getSource().sendFeedback(() -> Text.literal("[ME] bind_use " + u), true);
+							ctx.getSource().sendFeedback(() -> Text.literal(
+								"[ME] bind_use " + StringArgumentType.getString(ctx, "id")
+									+ " → " + entity.getUuid()), true);
 							return 1;
 						})))))
 			.then(CommandManager.literal("bind_attack")
 				.then(CommandManager.argument("id", StringArgumentType.word())
-					.then(CommandManager.argument("uuid", UuidArgumentType.uuid())
+					.then(CommandManager.argument("target", EntityArgumentType.entity())
 						.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
-							UUID u = UuidArgumentType.getUuid(ctx, "uuid");
+							var entity = EntityArgumentType.getEntity(ctx, "target");
 							mod.getInteractions().bindAttack(
-								StringArgumentType.getString(ctx, "id"), u,
+								StringArgumentType.getString(ctx, "id"),
+								entity.getUuid(),
 								StringArgumentType.getString(ctx, "command"));
+							ctx.getSource().sendFeedback(() -> Text.literal(
+								"[ME] bind_attack " + StringArgumentType.getString(ctx, "id")
+									+ " → " + entity.getUuid()), true);
 							return 1;
 						})))))
+			.then(CommandManager.literal("bind_use_look")
+				.then(CommandManager.argument("id", StringArgumentType.word())
+					.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
+						ServerPlayerEntity p = ctx.getSource().getPlayerOrThrow();
+						var entity = findLookedEntity(p, 8.0);
+						if (entity == null) {
+							ctx.getSource().sendError(Text.literal("No entity in crosshair (8 blocks)"));
+							return 0;
+						}
+						mod.getInteractions().bindUse(
+							StringArgumentType.getString(ctx, "id"),
+							entity.getUuid(),
+							StringArgumentType.getString(ctx, "command"));
+						ctx.getSource().sendFeedback(() -> Text.literal(
+							"[ME] bind_use_look → " + entity.getName().getString()
+								+ " " + entity.getUuid()), true);
+						return 1;
+					}))))
+			.then(CommandManager.literal("bind_attack_look")
+				.then(CommandManager.argument("id", StringArgumentType.word())
+					.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
+						ServerPlayerEntity p = ctx.getSource().getPlayerOrThrow();
+						var entity = findLookedEntity(p, 8.0);
+						if (entity == null) {
+							ctx.getSource().sendError(Text.literal("No entity in crosshair (8 blocks)"));
+							return 0;
+						}
+						mod.getInteractions().bindAttack(
+							StringArgumentType.getString(ctx, "id"),
+							entity.getUuid(),
+							StringArgumentType.getString(ctx, "command"));
+						ctx.getSource().sendFeedback(() -> Text.literal(
+							"[ME] bind_attack_look → " + entity.getName().getString()
+								+ " " + entity.getUuid()), true);
+						return 1;
+					}))))
 			.then(CommandManager.literal("unbind")
 				.then(CommandManager.argument("id", StringArgumentType.word()).executes(ctx -> {
 					mod.getInteractions().remove(StringArgumentType.getString(ctx, "id"));
@@ -504,12 +547,37 @@ public final class MacroCommands {
 					pl.sendMessage(Text.literal("[ME] dialog → " + text), false));
 				return 1;
 			}))
+			.then(CommandManager.literal("open")
+				.then(CommandManager.argument("id", StringArgumentType.word()).executes(ctx -> {
+					mod.getDialogs().open(ctx.getSource().getPlayerOrThrow(),
+						StringArgumentType.getString(ctx, "id"),
+						(pl, text) -> pl.sendMessage(Text.literal("[ME] dialog → " + text), false));
+					return 1;
+				})))
+			.then(CommandManager.literal("show")
+				.then(CommandManager.argument("title", StringArgumentType.word())
+					.then(CommandManager.argument("body", StringArgumentType.greedyString()).executes(ctx -> {
+						mod.getDialogs().show(ctx.getSource().getPlayerOrThrow(),
+							StringArgumentType.getString(ctx, "title"),
+							StringArgumentType.getString(ctx, "body"));
+						return 1;
+					}))))
 			.then(CommandManager.literal("submit")
 				.then(CommandManager.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
-					mod.getDialogs().submit(ctx.getSource().getPlayerOrThrow(),
+					boolean ok = mod.getDialogs().submit(ctx.getSource().getPlayerOrThrow(),
 						StringArgumentType.getString(ctx, "text"));
+					ctx.getSource().sendFeedback(() -> Text.literal(ok ? "[ME] submitted" : "[ME] captured"), false);
 					return 1;
-				}))));
+				})))
+			.then(CommandManager.literal("close").executes(ctx -> {
+				mod.getDialogs().close(ctx.getSource().getPlayerOrThrow());
+				return 1;
+			}))
+			.then(CommandManager.literal("is_open").executes(ctx -> {
+				boolean o = mod.getDialogs().isOpen(ctx.getSource().getPlayerOrThrow());
+				ctx.getSource().sendFeedback(() -> Text.literal(String.valueOf(o)), false);
+				return o ? 1 : 0;
+			})));
 	}
 
 	private static void registerPerm(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
@@ -546,18 +614,192 @@ public final class MacroCommands {
 	private static void registerWand(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
 		root.then(CommandManager.literal("wand")
 			.then(CommandManager.literal("list").executes(ctx -> {
-				mod.getWands().list().forEach((id, a) ->
-					ctx.getSource().sendFeedback(() -> Text.literal(id + " cd=" + a.cooldownTicks()), false));
-				return 1;
+				var binds = mod.getWands().list();
+				if (binds.isEmpty()) {
+					ctx.getSource().sendFeedback(() -> Text.literal("(no wand binds)"), false);
+				} else {
+					binds.forEach((tag, b) -> ctx.getSource().sendFeedback(() -> Text.literal(
+						tag + " cd=" + b.cooldownTicks()
+							+ (b.command() != null ? " cmd=" + b.command() : " handler")), false));
+				}
+				return binds.size();
 			}))
 			.then(CommandManager.literal("register")
-				.then(CommandManager.argument("id", StringArgumentType.word())
+				.then(CommandManager.argument("tag", StringArgumentType.word())
+					.then(CommandManager.argument("cooldown", IntegerArgumentType.integer(0, 1200))
+						.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
+							String tag = StringArgumentType.getString(ctx, "tag");
+							int cd = IntegerArgumentType.getInteger(ctx, "cooldown");
+							String cmd = StringArgumentType.getString(ctx, "command");
+							mod.getWands().register(tag, cd, cmd);
+							ctx.getSource().sendFeedback(() -> Text.literal("[ME] wand register " + tag), true);
+							return 1;
+						})))))
+			.then(CommandManager.literal("unregister")
+				.then(CommandManager.argument("tag", StringArgumentType.word()).executes(ctx -> {
+					mod.getWands().unregister(StringArgumentType.getString(ctx, "tag"));
+					return 1;
+				})))
+			.then(CommandManager.literal("unregister_all").executes(ctx -> {
+				mod.getWands().unregisterAll();
+				return 1;
+			}))
+			.then(CommandManager.literal("give")
+				.then(CommandManager.argument("player", EntityArgumentType.player())
+					.then(CommandManager.argument("tag", StringArgumentType.word())
+						.then(CommandManager.argument("name", StringArgumentType.greedyString()).executes(ctx -> {
+							mod.getWands().give(
+								EntityArgumentType.getPlayer(ctx, "player"),
+								StringArgumentType.getString(ctx, "tag"),
+								StringArgumentType.getString(ctx, "name"));
+							return 1;
+						})))))
+			.then(CommandManager.literal("give_custom")
+				.then(CommandManager.argument("player", EntityArgumentType.player())
+					.then(CommandManager.argument("item", StringArgumentType.string())
+						.then(CommandManager.argument("tag", StringArgumentType.word())
+							.then(CommandManager.argument("name", StringArgumentType.greedyString()).executes(ctx -> {
+								mod.getWands().giveCustom(
+									EntityArgumentType.getPlayer(ctx, "player"),
+									StringArgumentType.getString(ctx, "item"),
+									StringArgumentType.getString(ctx, "tag"),
+									StringArgumentType.getString(ctx, "name"), 1);
+								return 1;
+							}))))))
+			.then(CommandManager.literal("has")
+				.then(CommandManager.argument("player", EntityArgumentType.player())
+					.then(CommandManager.argument("tag", StringArgumentType.word()).executes(ctx -> {
+						boolean has = mod.getWands().playerHasWand(
+							EntityArgumentType.getPlayer(ctx, "player"),
+							StringArgumentType.getString(ctx, "tag"));
+						ctx.getSource().sendFeedback(() -> Text.literal(String.valueOf(has)), false);
+						return has ? 1 : 0;
+					}))))
+			.then(CommandManager.literal("cooldown")
+				.then(CommandManager.argument("player", EntityArgumentType.player())
+					.then(CommandManager.argument("tag", StringArgumentType.word()).executes(ctx -> {
+						long r = mod.getWands().cooldownRemaining(
+							EntityArgumentType.getPlayer(ctx, "player"),
+							StringArgumentType.getString(ctx, "tag"));
+						ctx.getSource().sendFeedback(() -> Text.literal("remaining=" + r), false);
+						return (int) Math.min(r, Integer.MAX_VALUE);
+					}))))
+			.then(CommandManager.literal("enable").executes(ctx -> {
+				mod.getWands().setEnabled(true);
+				return 1;
+			}))
+			.then(CommandManager.literal("disable").executes(ctx -> {
+				mod.getWands().setEnabled(false);
+				return 1;
+			})));
+	}
+
+	private static void registerHook(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
+		root.then(CommandManager.literal("hook")
+			.then(CommandManager.literal("bind")
+				.then(CommandManager.argument("type", StringArgumentType.word())
 					.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
-						mod.getWands().registerCommand(
-							StringArgumentType.getString(ctx, "id"), 10,
-							StringArgumentType.getString(ctx, "command"));
+						String type = StringArgumentType.getString(ctx, "type").toUpperCase();
+						try {
+							var h = io.runtoolkit.macroengine.systems.hook.HookSystems.Hook.valueOf(type);
+							mod.getHooks().bindCommand(h, StringArgumentType.getString(ctx, "command"));
+							ctx.getSource().sendFeedback(() -> Text.literal("[ME] hook " + type), true);
+							return 1;
+						} catch (Exception e) {
+							ctx.getSource().sendError(Text.literal("types: SNEAK_START SNEAK_STOP SPRINT_START SPRINT_STOP ELYTRA_START ELYTRA_STOP FLY_START FLY_STOP"));
+							return 0;
+						}
+					}))))
+			.then(CommandManager.literal("unbind")
+				.then(CommandManager.argument("type", StringArgumentType.word()).executes(ctx -> {
+					try {
+						var h = io.runtoolkit.macroengine.systems.hook.HookSystems.Hook.valueOf(
+							StringArgumentType.getString(ctx, "type").toUpperCase());
+						mod.getHooks().unbind(h);
 						return 1;
+					} catch (Exception e) {
+						return 0;
+					}
+				})))
+			.then(CommandManager.literal("enable").executes(ctx -> {
+				mod.getHooks().setEnabled(true);
+				return 1;
+			}))
+			.then(CommandManager.literal("disable").executes(ctx -> {
+				mod.getHooks().setEnabled(false);
+				return 1;
+			})));
+	}
+
+
+
+	private static void registerFreezeScoreboard(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
+		root.then(CommandManager.literal("freeze")
+			.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
+				mod.getFreeze().freeze(EntityArgumentType.getPlayer(ctx, "player"));
+				ctx.getSource().sendFeedback(() -> Text.literal("[ME] frozen"), true);
+				return 1;
+			})));
+		root.then(CommandManager.literal("unfreeze")
+			.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
+				mod.getFreeze().unfreeze(EntityArgumentType.getPlayer(ctx, "player"));
+				ctx.getSource().sendFeedback(() -> Text.literal("[ME] unfrozen"), true);
+				return 1;
+			})));
+		root.then(CommandManager.literal("scoreboard")
+			.then(CommandManager.literal("add")
+				.then(CommandManager.argument("name", StringArgumentType.word())
+					.then(CommandManager.argument("display", StringArgumentType.greedyString()).executes(ctx -> {
+						mod.getScoreboard().ensureObjective(ctx.getSource().getServer(),
+							StringArgumentType.getString(ctx, "name"),
+							StringArgumentType.getString(ctx, "display"));
+						return 1;
+					}))))
+			.then(CommandManager.literal("set")
+				.then(CommandManager.argument("objective", StringArgumentType.word())
+					.then(CommandManager.argument("holder", StringArgumentType.word())
+						.then(CommandManager.argument("value", IntegerArgumentType.integer()).executes(ctx -> {
+							mod.getScoreboard().setScore(ctx.getSource().getServer(),
+								StringArgumentType.getString(ctx, "objective"),
+								StringArgumentType.getString(ctx, "holder"),
+								IntegerArgumentType.getInteger(ctx, "value"));
+							return 1;
+						})))))
+			.then(CommandManager.literal("sidebar")
+				.then(CommandManager.argument("objective", StringArgumentType.word()).executes(ctx -> {
+					mod.getScoreboard().setSidebar(ctx.getSource().getServer(),
+						StringArgumentType.getString(ctx, "objective"));
+					return 1;
+				}))));
+		root.then(CommandManager.literal("cooldown")
+			.then(CommandManager.literal("check")
+				.then(CommandManager.argument("key", StringArgumentType.word()).executes(ctx -> {
+					long r = mod.getCooldowns().remaining(StringArgumentType.getString(ctx, "key"));
+					ctx.getSource().sendFeedback(() -> Text.literal("remaining=" + r), false);
+					return (int) Math.min(r, Integer.MAX_VALUE);
+				})))
+			.then(CommandManager.literal("use")
+				.then(CommandManager.argument("key", StringArgumentType.word())
+					.then(CommandManager.argument("ticks", IntegerArgumentType.integer(0)).executes(ctx -> {
+						boolean ok = mod.getCooldowns().tryUse(
+							StringArgumentType.getString(ctx, "key"),
+							IntegerArgumentType.getInteger(ctx, "ticks"));
+						ctx.getSource().sendFeedback(() -> Text.literal(ok ? "ok" : "blocked"), false);
+						return ok ? 1 : 0;
 					})))));
+	}
+
+
+	private static net.minecraft.entity.Entity findLookedEntity(ServerPlayerEntity player, double range) {
+		var start = player.getCameraPosVec(1.0f);
+		var dir = player.getRotationVec(1.0f);
+		var end = start.add(dir.x * range, dir.y * range, dir.z * range);
+		var box = player.getBoundingBox().stretch(dir.multiply(range)).expand(1.0);
+		var hit = net.minecraft.entity.projectile.ProjectileUtil.raycast(
+			player, start, end, box,
+			e -> !e.isSpectator() && e.canHit(),
+			range * range);
+		return hit == null ? null : hit.getEntity();
 	}
 
 	private static EventBus.Type parseType(String s) {

@@ -12,16 +12,13 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.CommandBlockExecutor;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-/**
- * Port of input/* — CBM + dialog + book.
- * Capture only; never auto-executes command text (datapack contract).
- */
 public final class InputSystems {
 	public static final String CBM_TAG = "macroengine_input";
 
@@ -36,7 +33,6 @@ public final class InputSystems {
 	private String lastBookRaw;
 	private String lastCbmCommand;
 	private String lastDialogRaw;
-	private UUID lastCbmEntity;
 
 	public void onBook(Consumer<BookCapture> l) { bookListeners.add(l); }
 	public void onCbm(Consumer<CbmCapture> l) { cbmListeners.add(l); }
@@ -46,7 +42,6 @@ public final class InputSystems {
 	public String getLastCbmCommand() { return lastCbmCommand; }
 	public String getLastDialogRaw() { return lastDialogRaw; }
 
-	/** Summon tagged command-block minecart at player (input/summon_cbm). */
 	public CommandBlockMinecartEntity summonCbm(ServerPlayerEntity player) {
 		ServerWorld world = player.getServerWorld();
 		CommandBlockMinecartEntity cbm = new CommandBlockMinecartEntity(
@@ -76,29 +71,25 @@ public final class InputSystems {
 	}
 
 	private void captureCbmIfNeeded(CommandBlockMinecartEntity cbm) {
-		// Yarn: getCommandExecutor().getCommand()
-		String command;
+		CommandBlockExecutor exec;
 		try {
-			command = cbm.getCommandExecutor().getCommand();
-		} catch (Exception e) {
+			exec = cbm.getCommandExecutor();
+		} catch (Throwable t) {
 			return;
 		}
+		String command = exec.getCommand();
 		if (command == null || command.isBlank()) return;
+
 		lastCbmCommand = command;
-		lastCbmEntity = cbm.getUuid();
-		Vec3d pos = cbm.getPos();
-		CbmCapture cap = new CbmCapture(cbm.getUuid(), command, pos);
-		MacroEngineMod.LOGGER.info("CBM capture uuid={} cmd={}", cbm.getUuid(), truncate(command, 80));
+		CbmCapture cap = new CbmCapture(cbm.getUuid(), command, cbm.getPos());
+		MacroEngineMod.LOGGER.info("CBM capture: {}", truncate(command, 80));
 		for (Consumer<CbmCapture> l : cbmListeners) {
 			try { l.accept(cap); } catch (Exception e) {
-				MacroEngineMod.LOGGER.error("cbm listener failed", e);
+				MacroEngineMod.LOGGER.error("cbm listener", e);
 			}
 		}
 		MacroEngineMod.get().getEvents().fire(EventBus.Type.ON_CBM_INPUT, cap);
-		// Clear command so it is not re-captured (datapack behavior)
-		try {
-			cbm.getCommandExecutor().setCommand("");
-		} catch (Exception ignored) {}
+		exec.setCommand("");
 	}
 
 	public void submitDialog(ServerPlayerEntity player, String value) {
