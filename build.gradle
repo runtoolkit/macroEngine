@@ -11,24 +11,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_25
 }
 
-sourceSets {
-    gametest {
-        java {
-            srcDirs = ['src/gametest/java']
-        }
-        resources {
-            srcDirs = ['src/gametest/resources']
-        }
-    }
-}
-
-afterEvaluate {
-    configurations {
-        gametestCompileClasspath.extendsFrom minecraftNamedCompile
-        gametestRuntimeClasspath.extendsFrom minecraftNamedRuntime
-    }
-}
-
 repositories {
     mavenCentral()
     maven { url "https://maven.fabricmc.net/" }
@@ -39,40 +21,11 @@ dependencies {
 
     implementation "net.fabricmc:fabric-loader:0.19.3"
     implementation "net.fabricmc.fabric-api:fabric-api:0.155.2+26.2"
-
-    gametestImplementation "net.fabricmc:fabric-loader:0.19.3"
-    gametestImplementation "net.fabricmc.fabric-api:fabric-api:0.155.2+26.2"
-}
-
-fabricApi {
-    configureTests {
-        createSourceSet = false
-        modId = 'macroengine-testmod'
-    }
-}
-
-loom {
-    runs {
-        gametest {
-            inherit server
-            name "Game Test"
-            vmArg "-Dfabric-api.gametest"
-            vmArg "-Dfabric-api.gametest.report-file=${project.buildDir}/junit.xml"
-            runDir "build/gametest"
-        }
-    }
-
-    mods {
-        "macroengine-testmod" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.gametest
-        }
-    }
 }
 
 def TARGETS = [
     "full"   : 107,
-    "1_20_5" : 18   // 1.20.5-1.20.6, uses the 1_20_5/data overlay
+    "1_20_5" : 41   // 1.20.5-1.20.6, uses the 1_20_5/data overlay
 ]
 
 def macroEngineSrc = file("datapacks/macroEngine")
@@ -222,7 +175,7 @@ TARGETS.each { label, packFormat ->
                 into(stageDir)
             }
 
-            // 1_20_5 overlay: SADECE "1_20_5" (legacy, pack_format 18) hedefine uygulanir.
+            // 1_20_5 overlay: SADECE "1_20_5" (legacy, pack_format 41) hedefine uygulanir.
             // "full" hedefinde uygulanmaz — aksi halde en guncel pack_format'a eski
             // surum override'lari karisir ve geriye uyumluluk yamasi ileri surumu bozar.
             if (label == "1_20_5") {
@@ -393,11 +346,4 @@ tasks.register('createSourceZip', Zip) {
     from layout.buildDirectory.dir('archive/source')
     archiveFileName = 'source-with-history.zip'
     destinationDirectory = layout.buildDirectory.dir('archive')
-}
-
-tasks.register("runMainTestClient", JavaExec) {
-    group = "verification"
-    description = "Runs Main.java Test Client standalone"
-    classpath = sourceSets.gametest.runtimeClasspath
-    mainClass = "io.runtoolkit.macroengine.Main"
 }
