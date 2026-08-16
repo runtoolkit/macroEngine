@@ -53,3 +53,34 @@ publishing {
 		}
 	}
 }
+
+// =====================================================================
+// Datapack / Resourcepack zip packaging — injected into :jar
+// Zips packs/macroEngine-Datapack and packs/macroEngine-Resourcepack
+// and drops the zips next to the mod jar in build/libs/.
+// =====================================================================
+
+def datapackSrc     = file("packs/macroEngine-Datapack")
+def resourcepackSrc = file("packs/macroEngine-Resourcepack")
+
+tasks.register("zipDatapack", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Datapack as a .zip"
+	onlyIf { datapackSrc.exists() }
+	from(datapackSrc)
+	archiveFileName.set("macroEngine-Datapack.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipResourcepack", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Resourcepack as a .zip"
+	onlyIf { resourcepackSrc.exists() }
+	from(resourcepackSrc)
+	archiveFileName.set("macroEngine-Resourcepack.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.named("jar") {
+	dependsOn "zipDatapack", "zipResourcepack"
+}
