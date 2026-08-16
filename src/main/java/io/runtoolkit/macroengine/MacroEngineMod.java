@@ -1,14 +1,21 @@
 package io.runtoolkit.macroengine;
 
+import io.runtoolkit.macroengine.api.bossbar.BossbarService;
+import io.runtoolkit.macroengine.api.cmd.CommandService;
 import io.runtoolkit.macroengine.api.dialog.DialogService;
+import io.runtoolkit.macroengine.api.gamerule.GameruleService;
 import io.runtoolkit.macroengine.api.interaction.InteractionService;
+import io.runtoolkit.macroengine.api.item.ItemService;
 import io.runtoolkit.macroengine.api.perm.PermissionService;
+import io.runtoolkit.macroengine.api.title.TitleService;
+import io.runtoolkit.macroengine.api.toggle.ToggleService;
 import io.runtoolkit.macroengine.api.wand.WandService;
 import io.runtoolkit.macroengine.command.MacroCommands;
 import io.runtoolkit.macroengine.config.EngineConfig;
 import io.runtoolkit.macroengine.event.EventBus;
 import io.runtoolkit.macroengine.fiber.FiberRuntime;
 import io.runtoolkit.macroengine.input.InputSystems;
+import io.runtoolkit.macroengine.lib.Batch;
 import io.runtoolkit.macroengine.lib.Debounce;
 import io.runtoolkit.macroengine.lib.Once;
 import io.runtoolkit.macroengine.lib.Scheduler;
@@ -27,6 +34,8 @@ import io.runtoolkit.macroengine.tick.TickChannel;
 import io.runtoolkit.macroengine.tick.TickEngine;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -69,6 +78,13 @@ public final class MacroEngineMod implements ModInitializer {
 	private final FiberRuntime fibers = new FiberRuntime();
 	private final InteractionService interactions = new InteractionService();
 	private final RateLimiter rateLimiter = new RateLimiter();
+	private final CommandService commands = new CommandService();
+	private final BossbarService bossbars = new BossbarService();
+	private final TitleService titles = new TitleService();
+	private final ItemService items = new ItemService();
+	private final ToggleService toggles = new ToggleService();
+	private final GameruleService gamerules = new GameruleService();
+	private final Batch batch = new Batch();
 
 	private MinecraftServer server;
 	private boolean loaded;
@@ -91,6 +107,15 @@ public final class MacroEngineMod implements ModInitializer {
 			players.onLeave(handler.getPlayer());
 		});
 
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
+			if (entity instanceof ServerPlayerEntity sp) {
+				events.fire(EventBus.Type.ON_DEATH, sp);
+			}
+		});
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldP, newP, alive) -> {
+			events.fire(EventBus.Type.ON_RESPAWN, newP);
+		});
+
 		UseItemCallback.EVENT.register((player, world, hand) -> {
 			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
 				wands.onUseItem(sp, hand);
@@ -100,12 +125,14 @@ public final class MacroEngineMod implements ModInitializer {
 		UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
 			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
 				interactions.fireUseEntity(sp, entity);
+				events.fire(EventBus.Type.ON_RC, sp);
 			}
 			return ActionResult.PASS;
 		});
 		AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
 			if (!world.isClient && player instanceof ServerPlayerEntity sp) {
 				interactions.fireAttackEntity(sp, entity);
+				events.fire(EventBus.Type.ON_LC, sp);
 			}
 			return ActionResult.PASS;
 		});
@@ -122,6 +149,7 @@ public final class MacroEngineMod implements ModInitializer {
 		registerDefaultChannels();
 		this.loaded = true;
 		tickEngine.resume();
+		events.fire(EventBus.Type.ON_LOAD, server);
 		LOGGER.info("MacroEngine v{} LOADED — channels={}", VERSION, tickEngine.channelCount());
 	}
 
@@ -130,6 +158,7 @@ public final class MacroEngineMod implements ModInitializer {
 		tickEngine.register(new TickChannel("time_systems", 1, 0, true, TickEngine::runTimeSystems));
 		tickEngine.register(new TickChannel("player_systems", 1, 0, true, TickEngine::runPlayerSystems));
 		tickEngine.register(new TickChannel("queue_systems", 1, 0, true, TickEngine::runQueueSystems));
+		tickEngine.register(new TickChannel("fiber_systems", 1, 0, true, TickEngine::runFiberSystems));
 		tickEngine.register(new TickChannel("hud_systems", 2, 1, true, TickEngine::runHudSystems));
 		tickEngine.register(new TickChannel("admin_systems", 4, 2, true, TickEngine::runAdminSystems));
 		tickEngine.register(new TickChannel("input_systems", 1, 0, true, TickEngine::runInputSystems));
@@ -146,6 +175,9 @@ public final class MacroEngineMod implements ModInitializer {
 		once.clear();
 		throttle.clear();
 		debounce.clear();
+		bossbars.clear();
+		batch.clear();
+		events.clear();
 		this.loaded = false;
 		this.server = null;
 		LOGGER.info("MacroEngine shut down");
@@ -183,6 +215,13 @@ public final class MacroEngineMod implements ModInitializer {
 	public FiberRuntime getFibers() { return fibers; }
 	public InteractionService getInteractions() { return interactions; }
 	public RateLimiter getRateLimiter() { return rateLimiter; }
+	public CommandService getCommands() { return commands; }
+	public BossbarService getBossbars() { return bossbars; }
+	public TitleService getTitles() { return titles; }
+	public ItemService getItems() { return items; }
+	public ToggleService getToggles() { return toggles; }
+	public GameruleService getGamerules() { return gamerules; }
+	public Batch getBatch() { return batch; }
 	public MinecraftServer getServer() { return server; }
 	public boolean isLoaded() { return loaded; }
 }

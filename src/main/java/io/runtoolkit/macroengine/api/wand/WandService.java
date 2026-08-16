@@ -1,5 +1,7 @@
 package io.runtoolkit.macroengine.api.wand;
 
+import io.runtoolkit.macroengine.MacroEngineMod;
+import io.runtoolkit.macroengine.event.EventBus;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -11,6 +13,7 @@ import java.util.function.Consumer;
 
 public final class WandService {
 	public record WandAction(String id, Consumer<ServerPlayerEntity> handler, int cooldownTicks) {}
+	public record WandEvent(ServerPlayerEntity player, String actionId) {}
 
 	private final Map<String, WandAction> actions = new ConcurrentHashMap<>();
 	private final Map<String, Long> cooldowns = new ConcurrentHashMap<>();
@@ -18,6 +21,11 @@ public final class WandService {
 
 	public void register(String id, int cooldownTicks, Consumer<ServerPlayerEntity> handler) {
 		actions.put(id, new WandAction(id, handler, Math.max(0, cooldownTicks)));
+	}
+
+	public void registerCommand(String id, int cooldownTicks, String command) {
+		register(id, cooldownTicks, p ->
+			MacroEngineMod.get().getCommands().runAsPlayer(p, command));
 	}
 
 	public void unregister(String id) { actions.remove(id); }
@@ -31,6 +39,7 @@ public final class WandService {
 		if (ready != null && tick < ready) return false;
 		cooldowns.put(key, tick + action.cooldownTicks());
 		action.handler().accept(player);
+		MacroEngineMod.get().getEvents().fire(EventBus.Type.ON_WAND, new WandEvent(player, actionId));
 		return true;
 	}
 

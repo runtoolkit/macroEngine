@@ -84,12 +84,18 @@ public final class TickEngine {
 		eng.mod.getRegionWatch().tick(server);
 	}
 
+	public static void runFiberSystems(MinecraftServer server, TickEngine eng) {
+		eng.mod.getFibers().tickAll(server);
+	}
+
 	public String statusText() {
 		StringBuilder sb = new StringBuilder();
 		sb.append("══ MacroEngine Tick v").append(MacroEngineMod.VERSION).append(" ══\n");
 		sb.append(" Counter ").append(tickCounter).append('\n');
 		sb.append(" Epoch ").append(mod.getState().epoch).append('\n');
 		sb.append(" Paused ").append(paused).append('\n');
+		sb.append(" Fibers ").append(mod.getFibers().size()).append('\n');
+		sb.append(" Queue ").append(mod.getTaskQueue().size()).append('\n');
 		sb.append(" Channels (").append(channels.size()).append("):\n");
 		for (TickChannel c : channels) {
 			sb.append("  - ").append(c.id)
