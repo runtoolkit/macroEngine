@@ -3,7 +3,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "SPGoding.datapack-language-server",
         "ms-python.python",
         "ms-python.flake8",
         "dlyz.md-link-checker",
@@ -11,6 +10,5 @@
       ],
       "settings": {}
     }
-  },
-  "onCreateCommand": "bash .devcontainer/setup.sh"
+  }
 }
