@@ -8,55 +8,66 @@ import net.minecraft.text.Text;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Yarn 1.21.1 ServerBossBar uses setPercent(float), not setMax/setValue.
- */
 public final class BossbarService {
 	private final Map<String, ServerBossBar> bars = new ConcurrentHashMap<>();
 	private final Map<String, Integer> maxValues = new ConcurrentHashMap<>();
 
-	public ServerBossBar add(String id, String title, BossBar.Color color, BossBar.Style style) {
-		remove(id);
+	public boolean exists(String id) {
+		return bars.containsKey(id);
+	}
+
+	/** @return false if already exists */
+	public boolean add(String id, String title, BossBar.Color color, BossBar.Style style) {
+		if (bars.containsKey(id)) return false;
 		ServerBossBar bar = new ServerBossBar(Text.literal(title), color, style);
+		bar.setVisible(true);
 		bars.put(id, bar);
 		maxValues.put(id, 100);
 		bar.setPercent(1.0f);
-		return bar;
+		return true;
 	}
 
-	public void remove(String id) {
+	public boolean remove(String id) {
 		ServerBossBar bar = bars.remove(id);
 		maxValues.remove(id);
-		if (bar != null) bar.clearPlayers();
+		if (bar == null) return false;
+		bar.clearPlayers();
+		bar.setVisible(false);
+		return true;
 	}
 
-	public void setValue(String id, int value, int max) {
+	/** @return false if bar missing */
+	public boolean setValue(String id, int value, int max) {
 		ServerBossBar bar = bars.get(id);
-		if (bar == null) return;
+		if (bar == null) return false;
 		int m = Math.max(1, max);
 		maxValues.put(id, m);
 		float pct = Math.max(0f, Math.min(1f, value / (float) m));
 		bar.setPercent(pct);
+		bar.setVisible(true);
+		return true;
 	}
 
-	public void setPlayers(String id, ServerPlayerEntity player, boolean add) {
+	public boolean setPlayers(String id, ServerPlayerEntity player, boolean add) {
 		ServerBossBar bar = bars.get(id);
-		if (bar == null) return;
+		if (bar == null) return false;
 		if (add) bar.addPlayer(player);
 		else bar.removePlayer(player);
+		return true;
 	}
 
-	public void setTitle(String id, String title) {
+	public boolean setTitle(String id, String title) {
 		ServerBossBar bar = bars.get(id);
-		if (bar != null) bar.setName(Text.literal(title));
-	}
-
-	public boolean has(String id) {
-		return bars.containsKey(id);
+		if (bar == null) return false;
+		bar.setName(Text.literal(title));
+		return true;
 	}
 
 	public void clear() {
-		bars.values().forEach(ServerBossBar::clearPlayers);
+		bars.values().forEach(b -> {
+			b.clearPlayers();
+			b.setVisible(false);
+		});
 		bars.clear();
 		maxValues.clear();
 	}

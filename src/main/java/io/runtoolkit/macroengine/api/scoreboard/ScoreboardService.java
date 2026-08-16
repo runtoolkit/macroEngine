@@ -4,27 +4,29 @@ import io.runtoolkit.macroengine.MacroEngineMod;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 
-/**
- * Scoreboard helpers via command execution (stable across Yarn renames).
- */
 public final class ScoreboardService {
-	public void ensureObjective(MinecraftServer server, String name, String display) {
-		MacroEngineMod.get().getCommands().runAsServer(server,
-			"scoreboard objectives add " + name + " dummy " + (display == null ? name : display));
+	public int ensureObjective(MinecraftServer server, String name, String display) {
+		String disp = display == null ? name : display.replace("\"", "");
+		// silent fail if exists is ok for vanilla; use result
+		return MacroEngineMod.get().getCommands().runAsServer(server,
+			"scoreboard objectives add " + name + " dummy \"" + disp + "\"");
 	}
 
-	public void setScore(MinecraftServer server, String objective, String holder, int value) {
-		MacroEngineMod.get().getCommands().runAsServer(server,
+	public int setScore(MinecraftServer server, String objective, String holder, int value) {
+		ensureObjective(server, objective, objective);
+		return MacroEngineMod.get().getCommands().runAsServer(server,
 			"scoreboard players set " + holder + " " + objective + " " + value);
 	}
 
-	public void addScore(MinecraftServer server, String objective, String holder, int delta) {
-		MacroEngineMod.get().getCommands().runAsServer(server,
+	public int addScore(MinecraftServer server, String objective, String holder, int delta) {
+		ensureObjective(server, objective, objective);
+		return MacroEngineMod.get().getCommands().runAsServer(server,
 			"scoreboard players add " + holder + " " + objective + " " + delta);
 	}
 
-	public void setSidebar(MinecraftServer server, String objective) {
-		MacroEngineMod.get().getCommands().runAsServer(server,
+	public int setSidebar(MinecraftServer server, String objective) {
+		ensureObjective(server, objective, objective);
+		return MacroEngineMod.get().getCommands().runAsServer(server,
 			"scoreboard objectives setdisplay sidebar " + objective);
 	}
 

@@ -103,10 +103,36 @@ public final class MacroCommands {
 							ctx.getSource().sendFeedback(() -> Text.literal(id + " rate=" + rate), true);
 							return 1;
 						}).orElseGet(() -> {
-							ctx.getSource().sendError(Text.literal("unknown: " + id));
+							ctx.getSource().sendError(Text.literal("unknown channel: " + id));
 							return 0;
 						});
-					})))));
+					}))))
+			.then(CommandManager.literal("register")
+				.then(CommandManager.argument("id", StringArgumentType.word())
+					.then(CommandManager.argument("rate", IntegerArgumentType.integer(1, 1200))
+						.then(CommandManager.argument("command", StringArgumentType.greedyString()).executes(ctx -> {
+							String id = StringArgumentType.getString(ctx, "id");
+							if (mod.getTickEngine().find(id).isPresent()) {
+								ctx.getSource().sendError(Text.literal("channel already exists: " + id));
+								return 0;
+							}
+							int rate = IntegerArgumentType.getInteger(ctx, "rate");
+							String cmd = StringArgumentType.getString(ctx, "command");
+							mod.getTickEngine().register(new TickChannel(id, rate, 0, true,
+								(server, eng) -> eng.mod().getCommands().runAsServer(server, cmd)));
+							ctx.getSource().sendFeedback(() -> Text.literal("[ME] channel registered " + id), true);
+							return 1;
+						})))))
+			.then(CommandManager.literal("unregister")
+				.then(CommandManager.argument("id", StringArgumentType.word()).executes(ctx -> {
+					String id = StringArgumentType.getString(ctx, "id");
+					if (!mod.getTickEngine().unregister(id)) {
+						ctx.getSource().sendError(Text.literal("unknown channel: " + id));
+						return 0;
+					}
+					ctx.getSource().sendFeedback(() -> Text.literal("[ME] channel removed " + id), true);
+					return 1;
+				}))));
 	}
 
 	private static void registerRunQueueSchedule(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
@@ -426,8 +452,13 @@ public final class MacroCommands {
 
 		root.then(CommandManager.literal("rename")
 			.then(CommandManager.argument("name", StringArgumentType.greedyString()).executes(ctx -> {
-				mod.getItems().renameHeld(ctx.getSource().getPlayerOrThrow(),
+				boolean ok = mod.getItems().renameHeld(ctx.getSource().getPlayerOrThrow(),
 					StringArgumentType.getString(ctx, "name"));
+				if (!ok) {
+					ctx.getSource().sendError(Text.literal("empty hand"));
+					return 0;
+				}
+				ctx.getSource().sendFeedback(() -> Text.literal("[ME] renamed"), true);
 				return 1;
 			})));
 	}
@@ -437,30 +468,52 @@ public final class MacroCommands {
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("id", StringArgumentType.word())
 					.then(CommandManager.argument("title", StringArgumentType.greedyString()).executes(ctx -> {
-						mod.getBossbars().add(StringArgumentType.getString(ctx, "id"),
-							StringArgumentType.getString(ctx, "title"),
+						String id = StringArgumentType.getString(ctx, "id");
+						if (mod.getBossbars().exists(id)) {
+							ctx.getSource().sendError(Text.literal("bossbar already exists: " + id));
+							return 0;
+						}
+						mod.getBossbars().add(id, StringArgumentType.getString(ctx, "title"),
 							BossBar.Color.BLUE, BossBar.Style.PROGRESS);
+						ServerPlayerEntity self = ctx.getSource().getPlayer();
+						if (self != null) mod.getBossbars().setPlayers(id, self, true);
+						ctx.getSource().sendFeedback(() -> Text.literal("[ME] bossbar " + id), true);
 						return 1;
 					}))))
 			.then(CommandManager.literal("set")
 				.then(CommandManager.argument("id", StringArgumentType.word())
 					.then(CommandManager.argument("value", IntegerArgumentType.integer(0))
 						.then(CommandManager.argument("max", IntegerArgumentType.integer(1)).executes(ctx -> {
-							mod.getBossbars().setValue(StringArgumentType.getString(ctx, "id"),
-								IntegerArgumentType.getInteger(ctx, "value"),
-								IntegerArgumentType.getInteger(ctx, "max"));
+							String id = StringArgumentType.getString(ctx, "id");
+							int value = IntegerArgumentType.getInteger(ctx, "value");
+							int max = IntegerArgumentType.getInteger(ctx, "max");
+							if (!mod.getBossbars().setValue(id, value, max)) {
+								ctx.getSource().sendError(Text.literal("unknown bossbar: " + id + " — use bossbar add first"));
+								return 0;
+							}
+							ServerPlayerEntity self = ctx.getSource().getPlayer();
+							if (self != null) mod.getBossbars().setPlayers(id, self, true);
+							ctx.getSource().sendFeedback(() -> Text.literal(
+								"[ME] bossbar " + id + " " + value + "/" + max), true);
 							return 1;
 						})))))
 			.then(CommandManager.literal("players")
 				.then(CommandManager.argument("id", StringArgumentType.word())
 					.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
-						mod.getBossbars().setPlayers(StringArgumentType.getString(ctx, "id"),
-							EntityArgumentType.getPlayer(ctx, "player"), true);
+						String id = StringArgumentType.getString(ctx, "id");
+						if (!mod.getBossbars().setPlayers(id, EntityArgumentType.getPlayer(ctx, "player"), true)) {
+							ctx.getSource().sendError(Text.literal("unknown bossbar: " + id));
+							return 0;
+						}
 						return 1;
 					}))))
 			.then(CommandManager.literal("remove")
 				.then(CommandManager.argument("id", StringArgumentType.word()).executes(ctx -> {
-					mod.getBossbars().remove(StringArgumentType.getString(ctx, "id"));
+					String id = StringArgumentType.getString(ctx, "id");
+					if (!mod.getBossbars().remove(id)) {
+						ctx.getSource().sendError(Text.literal("unknown bossbar: " + id));
+						return 0;
+					}
 					return 1;
 				}))));
 	}
@@ -513,8 +566,17 @@ public final class MacroCommands {
 			}))
 			.then(CommandManager.literal("book").executes(ctx -> {
 				mod.getInput().giveWritableBook(ctx.getSource().getPlayerOrThrow());
+				ctx.getSource().sendFeedback(() -> Text.literal(
+					"[ME] writable book given — sign/edit to capture, or input book_capture <text>"), true);
 				return 1;
 			}))
+			.then(CommandManager.literal("book_capture")
+				.then(CommandManager.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
+					mod.getInput().submitBook(ctx.getSource().getPlayerOrThrow(),
+						StringArgumentType.getString(ctx, "text"));
+					ctx.getSource().sendFeedback(() -> Text.literal("[ME] book captured"), true);
+					return 1;
+				})))
 			.then(CommandManager.literal("last").executes(ctx -> {
 				var in = mod.getInput();
 				ctx.getSource().sendFeedback(() -> Text.literal(
@@ -585,15 +647,23 @@ public final class MacroCommands {
 			.then(CommandManager.literal("grant")
 				.then(CommandManager.argument("player", EntityArgumentType.player())
 					.then(CommandManager.argument("perm", StringArgumentType.word()).executes(ctx -> {
-						mod.getPerms().grant(EntityArgumentType.getPlayer(ctx, "player").getUuid(),
-							StringArgumentType.getString(ctx, "perm"));
-						return 1;
+						var pl = EntityArgumentType.getPlayer(ctx, "player");
+						String perm = StringArgumentType.getString(ctx, "perm");
+						boolean added = mod.getPerms().grant(pl.getUuid(), perm);
+						ctx.getSource().sendFeedback(() -> Text.literal(
+							added ? "[ME] granted " + perm : "[ME] already has " + perm), true);
+						return added ? 1 : 0;
 					}))))
 			.then(CommandManager.literal("revoke")
 				.then(CommandManager.argument("player", EntityArgumentType.player())
 					.then(CommandManager.argument("perm", StringArgumentType.word()).executes(ctx -> {
-						mod.getPerms().revoke(EntityArgumentType.getPlayer(ctx, "player").getUuid(),
-							StringArgumentType.getString(ctx, "perm"));
+						var pl = EntityArgumentType.getPlayer(ctx, "player");
+						String perm = StringArgumentType.getString(ctx, "perm");
+						boolean ok = mod.getPerms().revoke(pl.getUuid(), perm);
+						if (!ok) {
+							ctx.getSource().sendError(Text.literal("player did not have " + perm));
+							return 0;
+						}
 						return 1;
 					}))))
 			.then(CommandManager.literal("check")
@@ -604,11 +674,48 @@ public final class MacroCommands {
 						ctx.getSource().sendFeedback(() -> Text.literal(String.valueOf(has)), false);
 						return has ? 1 : 0;
 					}))))
-			.then(CommandManager.literal("admin")
+			.then(CommandManager.literal("list")
 				.then(CommandManager.argument("player", EntityArgumentType.player()).executes(ctx -> {
-					mod.getPerms().setAdmin(EntityArgumentType.getPlayer(ctx, "player").getUuid(), true);
+					var pl = EntityArgumentType.getPlayer(ctx, "player");
+					var set = mod.getPerms().list(pl.getUuid());
+					ctx.getSource().sendFeedback(() -> Text.literal(
+						"admin=" + mod.getPerms().isAdmin(pl) + " perms=" + set), false);
+					return set.size();
+				})))
+			.then(CommandManager.literal("admin")
+				.then(CommandManager.argument("player", EntityArgumentType.player())
+					.then(CommandManager.argument("value", StringArgumentType.word()).executes(ctx -> {
+						boolean on = StringArgumentType.getString(ctx, "value").equalsIgnoreCase("true");
+						mod.getPerms().setAdmin(EntityArgumentType.getPlayer(ctx, "player").getUuid(), on);
+						ctx.getSource().sendFeedback(() -> Text.literal("[ME] admin=" + on), true);
+						return 1;
+					}))))
+			.then(CommandManager.literal("bind")
+				.then(CommandManager.argument("commandId", StringArgumentType.word())
+					.then(CommandManager.argument("perm", StringArgumentType.word()).executes(ctx -> {
+						String cid = StringArgumentType.getString(ctx, "commandId");
+						String perm = StringArgumentType.getString(ctx, "perm");
+						if (!mod.getPerms().bindCommand(cid, perm)) {
+							ctx.getSource().sendError(Text.literal("command bind already exists: " + cid));
+							return 0;
+						}
+						ctx.getSource().sendFeedback(() -> Text.literal("[ME] " + cid + " requires " + perm), true);
+						return 1;
+					}))))
+			.then(CommandManager.literal("unbind")
+				.then(CommandManager.argument("commandId", StringArgumentType.word()).executes(ctx -> {
+					String cid = StringArgumentType.getString(ctx, "commandId");
+					if (!mod.getPerms().unbindCommand(cid)) {
+						ctx.getSource().sendError(Text.literal("no bind: " + cid));
+						return 0;
+					}
 					return 1;
-				}))));
+				})))
+			.then(CommandManager.literal("binds").executes(ctx -> {
+				mod.getPerms().listCommandBinds().forEach((k, v) ->
+					ctx.getSource().sendFeedback(() -> Text.literal(k + " → " + v), false));
+				return 1;
+			})));
 	}
 
 	private static void registerWand(LiteralArgumentBuilder<ServerCommandSource> root, MacroEngineMod mod) {
@@ -750,25 +857,29 @@ public final class MacroCommands {
 			.then(CommandManager.literal("add")
 				.then(CommandManager.argument("name", StringArgumentType.word())
 					.then(CommandManager.argument("display", StringArgumentType.greedyString()).executes(ctx -> {
+						String name = StringArgumentType.getString(ctx, "name");
 						mod.getScoreboard().ensureObjective(ctx.getSource().getServer(),
-							StringArgumentType.getString(ctx, "name"),
-							StringArgumentType.getString(ctx, "display"));
+							name, StringArgumentType.getString(ctx, "display"));
+						ctx.getSource().sendFeedback(() -> Text.literal("[ME] objective " + name), true);
 						return 1;
 					}))))
 			.then(CommandManager.literal("set")
 				.then(CommandManager.argument("objective", StringArgumentType.word())
 					.then(CommandManager.argument("holder", StringArgumentType.word())
 						.then(CommandManager.argument("value", IntegerArgumentType.integer()).executes(ctx -> {
-							mod.getScoreboard().setScore(ctx.getSource().getServer(),
-								StringArgumentType.getString(ctx, "objective"),
-								StringArgumentType.getString(ctx, "holder"),
-								IntegerArgumentType.getInteger(ctx, "value"));
+							String obj = StringArgumentType.getString(ctx, "objective");
+							String holder = StringArgumentType.getString(ctx, "holder");
+							int val = IntegerArgumentType.getInteger(ctx, "value");
+							mod.getScoreboard().setScore(ctx.getSource().getServer(), obj, holder, val);
+							ctx.getSource().sendFeedback(() -> Text.literal(
+								"[ME] " + holder + " " + obj + "=" + val), true);
 							return 1;
 						})))))
 			.then(CommandManager.literal("sidebar")
 				.then(CommandManager.argument("objective", StringArgumentType.word()).executes(ctx -> {
-					mod.getScoreboard().setSidebar(ctx.getSource().getServer(),
-						StringArgumentType.getString(ctx, "objective"));
+					String obj = StringArgumentType.getString(ctx, "objective");
+					mod.getScoreboard().setSidebar(ctx.getSource().getServer(), obj);
+					ctx.getSource().sendFeedback(() -> Text.literal("[ME] sidebar=" + obj), true);
 					return 1;
 				}))));
 		root.then(CommandManager.literal("cooldown")
