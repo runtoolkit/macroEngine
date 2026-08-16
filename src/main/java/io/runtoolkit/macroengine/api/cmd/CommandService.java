@@ -5,17 +5,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
- * Port of api/cmd/* and multi_cmd — executes Minecraft commands without
- * datapack storage macros. Capture-only paths never auto-run; callers
- * must opt in.
+ * Port of api/cmd/* — Yarn 1.21.1: CommandManager.execute returns int;
+ * executeWithPrefix is void.
  */
 public final class CommandService {
 	private final List<String> history = new ArrayList<>();
@@ -26,14 +23,25 @@ public final class CommandService {
 		String cmd = stripSlash(command);
 		record(cmd);
 		ServerCommandSource src = server.getCommandSource().withLevel(4);
-		return server.getCommandManager().executeWithPrefix(src, cmd);
+		try {
+			return server.getCommandManager().getDispatcher().execute(cmd, src);
+		} catch (Exception e) {
+			MacroEngineMod.LOGGER.warn("Command failed: {} — {}", cmd, e.getMessage());
+			return 0;
+		}
 	}
 
 	public int runAsPlayer(ServerPlayerEntity player, String command) {
 		if (command == null || command.isBlank()) return 0;
 		String cmd = stripSlash(command);
 		record(cmd);
-		return player.getServer().getCommandManager().executeWithPrefix(player.getCommandSource(), cmd);
+		try {
+			return player.getServer().getCommandManager().getDispatcher()
+				.execute(cmd, player.getCommandSource());
+		} catch (Exception e) {
+			MacroEngineMod.LOGGER.warn("Command failed: {} — {}", cmd, e.getMessage());
+			return 0;
+		}
 	}
 
 	public int runAt(MinecraftServer server, Vec3d pos, String dimensionKey, String command) {
@@ -43,7 +51,12 @@ public final class CommandService {
 		ServerCommandSource src = server.getCommandSource()
 			.withPosition(pos)
 			.withLevel(4);
-		return server.getCommandManager().executeWithPrefix(src, cmd);
+		try {
+			return server.getCommandManager().getDispatcher().execute(cmd, src);
+		} catch (Exception e) {
+			MacroEngineMod.LOGGER.warn("Command failed: {} — {}", cmd, e.getMessage());
+			return 0;
+		}
 	}
 
 	public int runSequence(MinecraftServer server, List<String> commands) {
