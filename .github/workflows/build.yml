@@ -32,7 +32,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build
-        run: ./gradlew build --stacktrace --no-daemon
+        run: chmod +x gradlew && ./gradlew build --stacktrace --no-daemon
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
