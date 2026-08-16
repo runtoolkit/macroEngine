@@ -1,44 +1,31 @@
-# MacroEngine Fabric
+# MacroEngine Fabric — 1.21.1 / Yarn
 
-Full Java port of the [macroEngine](https://github.com/runtoolkit/macroEngine) datapack core.
+Working runtime port of the macroEngine datapack core.
 
-| | |
-|--|--|
-| **Minecraft** | 1.21.1 |
-| **Mappings** | Yarn `1.21.1+build.3` |
-| **Loader** | Fabric 0.16.9 |
-| **API** | Fabric API `0.116.15+1.21.1` |
-| **Java** | 21 |
+## Smoke test
+
+```
+/macroengine status
+/macroengine run say hello
+/macroengine queue add 40 say queued
+/macroengine schedule repeat t 20 say pulse
+/macroengine fiber spawn blink 5 say fiber-step
+/macroengine batch add say a
+/macroengine batch add say b
+/macroengine batch flush
+/macroengine input summon_cbm
+/macroengine region add spawn -5 60 -5 5 80 5
+/macroengine event on ON_REGION_ENTER e say entered
+/macroengine wand register boom particle explosion ~ ~1 ~
+/macroengine toggle set feature_x true
+```
+
+## Modules
+
+tick · queue · schedule · fiber · batch · event · cmd · input(CBM) · region · wand · perm · interaction · bossbar · title · item · toggle · gamerule
 
 ## Build
 
 ```bash
 ./gradlew build
 ```
-
-Output: `build/libs/macroengine-6.1.0.jar`
-
-## Install
-
-1. Install Fabric Loader for 1.21.1  
-2. Put `macroengine-6.1.0.jar` in `mods/`  
-3. Put Fabric API in `mods/`  
-4. Start server/client — engine auto-boots (no `/function setup`)
-
-## Commands (op level 2)
-
-```
-/macroengine status|pause|resume|version
-/macroengine channel list|enable <id>|disable <id>|setrate <id> <n>
-/macroengine dialog open|submit <text>
-/macroengine input last|validate <int|float|bool|tag> <value>
-/macroengine perm grant|revoke|check|admin <player> [perm]
-/macroengine wand list|register <id>
-```
-
-## Architecture
-
-Tick channels run on `ServerTickEvents.END_SERVER_TICK`.  
-No datapack `#minecraft:tick` / storage `loaded` guard required.
-
-MIT © runtoolkit

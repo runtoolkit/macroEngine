@@ -1,5 +1,7 @@
 package io.runtoolkit.macroengine.systems.geo;
 
+import io.runtoolkit.macroengine.MacroEngineMod;
+import io.runtoolkit.macroengine.event.EventBus;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 
@@ -16,6 +18,8 @@ public final class RegionWatch {
 		}
 	}
 
+	public record RegionEvent(ServerPlayerEntity player, String regionId, boolean entered) {}
+
 	private final List<Region> regions = new ArrayList<>();
 	private final Map<UUID, String> inside = new ConcurrentHashMap<>();
 
@@ -27,6 +31,8 @@ public final class RegionWatch {
 	public void remove(String id) {
 		regions.removeIf(r -> r.id.equals(id));
 	}
+
+	public List<Region> list() { return List.copyOf(regions); }
 
 	public void tick(MinecraftServer server) {
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
@@ -42,9 +48,19 @@ public final class RegionWatch {
 			UUID id = player.getUuid();
 			String prev = inside.get(id);
 			if (found == null) {
-				if (prev != null) inside.remove(id);
+				if (prev != null) {
+					inside.remove(id);
+					MacroEngineMod.get().getEvents().fire(EventBus.Type.ON_REGION_LEAVE,
+						new RegionEvent(player, prev, false));
+				}
 			} else if (!found.equals(prev)) {
+				if (prev != null) {
+					MacroEngineMod.get().getEvents().fire(EventBus.Type.ON_REGION_LEAVE,
+						new RegionEvent(player, prev, false));
+				}
 				inside.put(id, found);
+				MacroEngineMod.get().getEvents().fire(EventBus.Type.ON_REGION_ENTER,
+					new RegionEvent(player, found, true));
 			}
 		}
 	}
