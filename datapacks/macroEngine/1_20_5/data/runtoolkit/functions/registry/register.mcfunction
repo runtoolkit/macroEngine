@@ -1,5 +1,5 @@
 # runtoolkit:registry/register
-# Called once by a subsystem (e.g. macroengine_load:main) to announce itself
+# Called once by a subsystem (e.g. macroengine:setup) to announce itself
 # to runtoolkit's dispatcher. Idempotent: re-running with the same name
 # overwrites that entry instead of duplicating it, so a /reload doesn't
 # grow the list.
@@ -7,7 +7,7 @@
 # MACRO INPUT:
 #   $(name)       -> subsystem id, e.g. "macroengine"
 #   $(version)    -> int, mirrors #runtoolkit.packs.<name>.version
-#   $(load_fn)    -> function id dispatched on minecraft:load, e.g. "macroengine_load:main"
+#   $(load_fn)    -> function id dispatched on minecraft:load, e.g. "macroengine:setup"
 #   $(tick_fn)    -> function id dispatched on minecraft:tick, e.g. "macroengine.main:macroengine/tick"
 #   $(disable_fn) -> function id that cleanly disables this subsystem, e.g. "macroengine:disable"
 #                    (used by runtoolkit:killswitch/all — must be the subsystem's public,

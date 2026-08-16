@@ -1,7 +1,7 @@
 # runtoolkit:registry/load_all
 # Called from runtoolkit:load. Walks the static seed (registry/seed),
 # calling each subsystem's load_fn and then registering it with the live
-# registry — replacing the old hardcoded "function macroengine_load:main"
+# registry — replacing the old hardcoded "function macroengine:setup"
 # + duplicate load_fn string that used to live directly in load.mcfunction.
 
 function runtoolkit:registry/seed

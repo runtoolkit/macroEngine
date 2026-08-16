@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 ---
-> Current version: **v6.0.2**
+> Current version: **v6.1.0**
 ---
 
 > **This datapack was considered safe to use as of its last release, but it no longer receives security improvements, bug fixes, or new features. There is no "up to date" version to move to.**
@@ -44,10 +44,16 @@ execute unless data storage macroengine:engine {global:{loaded:1b}} run function
 # Guard checks the SAME storage/path the trigger condition checks (macroengine:engine global.loaded).
 execute if data storage macroengine:engine {global:{loaded:1b}} run return 0
 
-function macroengine_load:main
+function macroengine:setup
 
 data modify storage macroengine:engine global.loaded set value 1b
 ```
+
+> **v6.1.0 change:** macroEngine no longer auto-starts via `minecraft:load`. The
+> old `function macroengine_load:main` entry point (and the LanternMC `load:`
+> tag chain it depended on) is gone. Consuming packs must call
+> `function macroengine:setup` explicitly — either from their own manual
+> `<namespace>:load_macroengine` guard (as above) or once by an admin.
 
 <details>
 <summary>Fixed bug: duplicate load trigger (click to expand)</summary>
@@ -65,7 +71,7 @@ Both the check and the set must target `macroengine:engine global.loaded`. If yo
 ```
 macroengine:engine  (persistent data)
 ├── global
-│   ├── version: "v6.0.2"
+│   ├── version: "v6.1.0"
 │   ├── loaded: 1b
 │   └── tick: <int>
 ├── players
@@ -87,17 +93,17 @@ macroengine:output  (receiving results from a function)
 
 ## 📦 Dependencies
 
-### Lantern Load
+### Lantern Load — **removed in v6.1.0**
 **Repository:** https://github.com/LanternMC/load
 **License:** BSD 0-Clause (public domain)
 
-Provides deterministic load order, version tracking, and pre/load/post-load hooks.
+Previously provided deterministic load order, version tracking, and pre/load/post-load hooks via the `load:` namespace tag chain. As of v6.1.0 this dependency is gone entirely — macroEngine starts via a manual `function macroengine:setup` call instead (see the Load Guard section above). `data/load/` no longer exists in this pack.
 
 ```mcfunction
 # Check if MacroEngine is loaded
 execute if score #MacroEngine load.status matches 1.. run say MacroEngine is loaded
 
-# Get version (major*10000 + minor*100 + patch → v6.0.2 = 601)
+# Get version (major*100 + minor*10 + patch → v6.1.0 = 610)
 scoreboard players get #MacroEngine load.status
 ```
 
@@ -138,4 +144,4 @@ function macroengine:core/lib/string/replace
 
 ---
 
-*MacroEngine v6.0.2 | MC Java 26.2 | Pure Datapack*
+*MacroEngine v6.1.0 | MC Java 26.2 | Pure Datapack*

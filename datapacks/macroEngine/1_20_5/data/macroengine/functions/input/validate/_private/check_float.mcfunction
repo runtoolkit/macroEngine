@@ -16,23 +16,23 @@ execute if score #macroengine.Len macroengine.tmp matches 0 run return 0
 # Count the dots via replace() — its return value is a real match count,
 # unlike find()'s (see count_one_digit for why find()'s own return isn't
 # usable as a count).
-data modify storage macroengine_string:input replace.String set from storage macroengine:input_validate scratch.rest
-data modify storage macroengine_string:input replace.Find set value "."
-data modify storage macroengine_string:input replace.Replace set value ""
-data modify storage macroengine_string:input replace.n set value 0
+data modify storage macroengine:core/internal/string/input replace.String set from storage macroengine:input_validate scratch.rest
+data modify storage macroengine:core/internal/string/input replace.Find set value "."
+data modify storage macroengine:core/internal/string/input replace.Replace set value ""
+data modify storage macroengine:core/internal/string/input replace.n set value 0
 
 scoreboard players set #macroengine.DotHits macroengine.tmp 0
-execute store result score #macroengine.DotHits macroengine.tmp run function macroengine_string:util/replace
+execute store result score #macroengine.DotHits macroengine.tmp run function macroengine:core/internal/string/util/replace
 
 execute if score #macroengine.DotHits macroengine.tmp matches 2.. run data modify storage macroengine:input_validate result.error set value "more than one '.'"
 execute if score #macroengine.DotHits macroengine.tmp matches 2.. run return 0
 
 # Exactly one dot: find its position (find()'s OUTPUT LIST is trustworthy —
 # only its own return value isn't) and reject if it's first/last char.
-execute if score #macroengine.DotHits macroengine.tmp matches 1 run data modify storage macroengine_string:input find.String set from storage macroengine:input_validate scratch.rest
-execute if score #macroengine.DotHits macroengine.tmp matches 1 run data modify storage macroengine_string:input find.Find set value "."
-execute if score #macroengine.DotHits macroengine.tmp matches 1 run data modify storage macroengine_string:input find.n set value 1
-execute if score #macroengine.DotHits macroengine.tmp matches 1 run function macroengine_string:util/find
+execute if score #macroengine.DotHits macroengine.tmp matches 1 run data modify storage macroengine:core/internal/string/input find.String set from storage macroengine:input_validate scratch.rest
+execute if score #macroengine.DotHits macroengine.tmp matches 1 run data modify storage macroengine:core/internal/string/input find.Find set value "."
+execute if score #macroengine.DotHits macroengine.tmp matches 1 run data modify storage macroengine:core/internal/string/input find.n set value 1
+execute if score #macroengine.DotHits macroengine.tmp matches 1 run function macroengine:core/internal/string/util/find
 execute if score #macroengine.DotHits macroengine.tmp matches 1 run function macroengine:input/validate/_private/check_float_dot_position
 execute if score #macroengine.DotHits macroengine.tmp matches 1 if data storage macroengine:input_validate {result:{error:"malformed decimal point"}} run return 0
 

@@ -5,18 +5,22 @@
       "version": "v1.7",
       "source": "https://github.com/ICY105/PlayerAction",
       "license": "MIT",
-      "namespace": "player_action",
-      "load_tag": "#player_action:load",
-      "renamed_as": "macroengine_player",
-      "note": "Embedded as-is. Provides player event hooks (click, movement, block interaction)."
+      "previously_renamed_as": "macroengine_player",
+      "note": "Ported into macroengine:core/internal/player/* (v6.1.0 refactor). The intermediate macroengine_player namespace no longer exists. player_action.* scoreboard objectives and entity tags remain as data-level identifiers, left unchanged from upstream."
+    },
+    {
+      "id": "stringlib",
+      "source": "https://modrinth.com/datapack/stringlib",
+      "note": "Ported into macroengine:core/internal/string/* (v6.1.0 refactor). Upstream/embedded copy was itself missing zprivate/split, zprivate/to_lowercase/main_*, zprivate/to_uppercase/main_* — see in-file warning comments in the ported files."
     }
   ],
-  "required": [
+  "required": [],
+  "removed": [
     {
       "id": "lanternload",
-      "renamed_as": "macroengine_load",
+      "previously_renamed_as": "macroengine_load",
       "source": "https://github.com/LanternMC/load",
-      "note": "Already bundled via data/load namespace."
+      "note": "Removed in v6.1.0. Replaced by manual /function macroengine:setup entry point."
     }
   ]
 }

@@ -25,8 +25,8 @@
 #      newly-allowed namespace is NOT separately protected.
 #   2. Is every function under this namespace fully authored/audited by
 #      this project (not a third-party pack with unknown internals)?
-#   3. What is the narrowest possible prefix? Prefer "macroengine_string:util/"
-#      over "macroengine_string:" if only the util/ functions are meant to be
+#   3. What is the narrowest possible prefix? Prefer "macroengine:core/internal/string/util/"
+#      over "macroengine:core/internal/string/" if only the util/ functions are meant to be
 #      externally callable.
 #
 # FORMAT:
@@ -45,4 +45,4 @@ data modify storage macroengine:output config.namespace_allowlist set value ["ma
 
 # --- Approved additional prefixes go below this line, one per line. ---
 # Example (DO NOT UNCOMMENT WITHOUT A REVIEWED PR):
-# data modify storage macroengine:output config.namespace_allowlist append value "macroengine_string:util/"
+# data modify storage macroengine:output config.namespace_allowlist append value "macroengine:core/internal/string/util/"

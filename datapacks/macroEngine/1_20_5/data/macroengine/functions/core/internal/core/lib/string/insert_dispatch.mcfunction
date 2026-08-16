@@ -1,1 +1,1 @@
-$function macroengine_string:util/insert {Index:$(Index)}
+$function macroengine:core/internal/string/util/insert {Index:$(Index)}

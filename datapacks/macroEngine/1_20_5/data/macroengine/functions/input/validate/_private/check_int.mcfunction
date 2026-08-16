@@ -6,12 +6,12 @@
 # A string is "all digits, optional leading -" iff:
 # 1. stripping one leading '-' (if present) leaves a non-empty rest, AND
 # 2. the sum of how many times each of '0'..'9' occurs in that rest,
-# via macroengine_string:util/find, equals the rest's total length.
+# via macroengine:core/internal/string/util/find, equals the rest's total length.
 # If every character is one of the 10 digits, the counts must add up to
 # the full length — any non-digit character breaks the sum by definition,
 # without needing to inspect it directly.
 #
-# Reuses macroengine_string:util/find (read-only substring search) — this never
+# Reuses macroengine:core/internal/string/util/find (read-only substring search) — this never
 # executes the input, only counts characters via a library already
 # audited for the $$(command) macro-injection fix.
 # ======================================================================================

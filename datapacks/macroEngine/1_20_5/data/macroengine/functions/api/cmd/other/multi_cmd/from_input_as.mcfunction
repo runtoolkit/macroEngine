@@ -3,7 +3,7 @@
 # Execute as a specific selector
 #
 # INPUT (storage macroengine:input):
-# list → komut listesi
+# list → command list
 # selector → entity selector (default: @s)
 # ─────────────────────────────────────────────────────────────────
 

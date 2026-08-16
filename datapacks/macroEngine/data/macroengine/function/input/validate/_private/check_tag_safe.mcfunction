@@ -6,7 +6,7 @@
 # objective/player-name fragment or dropped unquoted into a single NBT
 # string field without needing escaping.
 #
-# One macroengine_string:util/find per forbidden character — fixed cost (9 calls),
+# One macroengine:core/internal/string/util/find per forbidden character — fixed cost (9 calls),
 # not per-character-of-input.
 # ======================================================================================
 
@@ -14,8 +14,8 @@ execute store result score #macroengine.Len macroengine.tmp run data get storage
 execute if score #macroengine.Len macroengine.tmp matches 0 run data modify storage macroengine:input_validate result.error set value "empty input"
 execute if score #macroengine.Len macroengine.tmp matches 0 run return 0
 
-data modify storage macroengine_string:input find.String set from storage macroengine:input_validate scratch.value
-data modify storage macroengine_string:input find.n set value 1
+data modify storage macroengine:core/internal/string/input find.String set from storage macroengine:input_validate scratch.value
+data modify storage macroengine:core/internal/string/input find.n set value 1
 
 data modify storage macroengine:input_validate scratch.bad set value 0b
 
