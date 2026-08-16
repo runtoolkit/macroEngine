@@ -1,1 +1,1 @@
-$function macroengine_string:util/to_uppercase/full {String:"$(String)"}
+$function macroengine:core/internal/string/util/to_uppercase/full {String:"$(String)"}

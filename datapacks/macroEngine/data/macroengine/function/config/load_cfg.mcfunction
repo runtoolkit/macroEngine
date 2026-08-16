@@ -11,5 +11,5 @@ execute unless score #runtoolkit.packs.macroengine.config.load.timeout_seconds m
 
 # --- load.sandbox_enabled: 0=normal gate flow, 1=auto-confirm on load (default 0)
 # Mirrors the legacy macroengine:engine {sandbox:1b} storage flag for
-# backward compatibility — both are checked in macroengine_load:load/confirm.
+# backward compatibility — both are checked in macroengine:core/internal/load/confirm.
 execute unless score #runtoolkit.packs.macroengine.config.load.sandbox_enabled macroengine.meta matches 0..1 run scoreboard players set #runtoolkit.packs.macroengine.config.load.sandbox_enabled macroengine.meta 0

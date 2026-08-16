@@ -2,9 +2,9 @@
 # Single source of runtime configuration (replaces _rt_origin + scattered defaults).
 # Other packs may read macroengine:engine config / macroengine.meta scores; do not hardcode.
 
-# ── Version (602 = 6.0.2) ──────────────────────────────────────────
+# ── Version (610 = 6.1.0) ──────────────────────────────────────────
 scoreboard objectives add macroengine.meta dummy
-scoreboard players set #runtoolkit.packs.macroengine.version macroengine.meta 602
+scoreboard players set #runtoolkit.packs.macroengine.version macroengine.meta 610
 
 # Archived flag: set to 1 to show archive warning on every /reload
 # scoreboard players set #runtoolkit.archivedpacks.macroengine macroengine.meta 1
@@ -12,7 +12,7 @@ execute unless score #runtoolkit.archivedpacks.macroengine macroengine.meta = #r
 
 # ── Engine defaults (only fill missing keys — preserves live data) ─
 execute unless data storage macroengine:engine global run data modify storage macroengine:engine global set value {}
-data modify storage macroengine:engine global.version set value "v6.0.2"
+data modify storage macroengine:engine global.version set value "v6.1.0"
 
 execute unless data storage macroengine:engine config run data modify storage macroengine:engine config set value {}
 
@@ -25,8 +25,8 @@ execute unless data storage macroengine:engine config.reload_warn run data modif
 execute unless data storage macroengine:engine config.namespace_allowlist run data modify storage macroengine:engine config.namespace_allowlist set value ["macroengine:"]
 
 # Mirror sandbox flag used by gate/* — gates are active by default (sandbox:1b).
-# Disabling requires confirmation via macroengine_load:gate/toggle/disable; re-enabling
-# (macroengine_load:gate/toggle/enable) does not.
+# Disabling requires confirmation via macroengine:core/internal/load/gate/toggle/disable; re-enabling
+# (macroengine:core/internal/load/gate/toggle/enable) does not.
 execute if data storage macroengine:engine config{sandbox:1b} run data modify storage macroengine:engine sandbox set value 1b
 execute unless data storage macroengine:engine config{sandbox:1b} run data modify storage macroengine:engine sandbox set value 0b
 

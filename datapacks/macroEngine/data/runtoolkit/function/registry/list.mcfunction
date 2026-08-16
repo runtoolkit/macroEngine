@@ -6,7 +6,7 @@
 #
 # Storage shape (runtoolkit:engine):
 #   registry.subsystems = [
-#     {name:"macroengine", version:602, load_fn:"macroengine_load:main", tick_fn:"macroengine.main:macroengine/tick"},
+#     {name:"macroengine", version:610, load_fn:"macroengine:setup", tick_fn:"macroengine.main:macroengine/tick"},
 #     ...
 #   ]
 

@@ -6,7 +6,7 @@
 #
 # Key naming: #runtoolkit.packs.macroengine.config.tick.<name>
 # Storage: macroengine.meta scoreboard (config/gate values only - temporary data
-#          uses macroengine.tmp, see macroengine_load:loader/scoreboards lines 5-6)
+#          uses macroengine.tmp, see macroengine:core/internal/load/loader/scoreboards lines 5-6)
 #
 # This function only sets a default for keys that are MISSING; it does not
 # overwrite an existing value (idempotent - safe to call again on reload).

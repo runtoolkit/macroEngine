@@ -1,5 +1,5 @@
 # macroengine:systems/hook/internal/unbind_filter
-# _hook_unbinds listesini iterate eder.
+# Iterates over the _hook_unbinds list.
 # Copies back binds that do not match _hook_filter_event to hook_binds.
 
 execute unless data storage macroengine:engine _hook_unbinds[0] run return 0

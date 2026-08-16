@@ -7,11 +7,11 @@ execute unless data storage macroengine:engine {modules:{hook:1b}} run return 0
 
 execute unless data storage macroengine:engine hook_binds[0] run return 0
 
-# player_join — delegated to #macroengine_player:v1/joined (fired by player_action when player_action.join >= 1)
+# player_join — delegated to #macroengine:core/internal/player/joined (fired by player_action when player_action.join >= 1)
 # Only score management remains here to prevent double-fire
 execute as @a run scoreboard players set @s macroengine.hook_online 1
 
-# player_death — delegated to #macroengine_player:v1/died (fired by player_action when player_action.death >= 1)
+# player_death — delegated to #macroengine:core/internal/player/died (fired by player_action when player_action.death >= 1)
 # Only score reset remains here to prevent double-fire
 execute as @a[scores={macroengine.hook_deaths=1..}] run scoreboard players set @s macroengine.hook_deaths 0
 
@@ -76,7 +76,7 @@ execute as @a[scores={macroengine.hook_dim_changed=1..}] run scoreboard players 
 execute as @a[scores={macroengine.hook_traded=1..}] run function macroengine:core/internal/systems/hook/on_trade
 execute as @a[scores={macroengine.hook_traded=1..}] run scoreboard players set @s macroengine.hook_traded 0
 
-# jumped — delegated to #macroengine_player:v1/jumped (fired by player_action when player_action.jump >= 1)
+# jumped — delegated to #macroengine:core/internal/player/jumped (fired by player_action when player_action.jump >= 1)
 # Only score reset remains here to prevent double-fire
 execute as @a[scores={macroengine.hook_jump=1..}] run scoreboard players reset @s macroengine.hook_jump
 

@@ -1,1 +1,1 @@
-$function macroengine_string:util/to_string {Input:$(Input)}
+$function macroengine:core/internal/string/util/to_string {Input:$(Input)}

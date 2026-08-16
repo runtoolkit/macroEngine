@@ -31,7 +31,7 @@
 #   result.error    — human-readable reason when invalid (unset when valid)
 #   result.value    — for "int"/"float": the raw string, unchanged (caller
 #                     still owns turning it into a real number via
-#                     macroengine_string:util/to_number AFTER checking result.valid —
+#                     macroengine:core/internal/string/util/to_number AFTER checking result.valid —
 #                     this function never calls to_number itself, since
 #                     to_number has no failure mode of its own: feeding it
 #                     a non-numeric string produces a raw SNBT parse error
@@ -39,7 +39,7 @@
 #                     the gap this function exists to close upstream of it)
 #
 # THIS FUNCTION NEVER $$(...) MACRO-EXECUTES THE INPUT STRING. It only
-# calls macroengine_string:util/find (read-only string search) against it.
+# calls macroengine:core/internal/string/util/find (read-only string search) against it.
 # ======================================================================================
 
 data remove storage macroengine:input_validate result
