@@ -23,10 +23,7 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:0.155.2+26.2"
 }
 
-def TARGETS = [
-    "full"   : 107,
-    "1_20_5" : 41   // 1.20.5-1.20.6, uses the 1_20_5/data overlay
-]
+def TARGETS_PACK_FORMAT = 107 // main pack.mcmeta pack_format (modern data/, tekil isimler)
 
 def macroEngineSrc = file("datapacks/macroEngine")
 def extensionsSrc  = file("datapacks/macroengine_extensions")
@@ -144,7 +141,7 @@ tasks.register("lintPackMcmeta") {
 // Lint: tekil (modern, 1.21+) ve cogul (legacy, 1.20.6-) klasor isimleri
 // senkron mu? Ikisi de kaynakta var oluyor (bkz. macroEngine/data/*/function
 // vs functions), build sirasinda her hedef zaten kendi isimlendirmesini
-// seciyor (bkz. prepare${label} task), ama bu iki taraf ICERIK olarak
+// seciyor (bkz. prepareMacroEngine task), ama bu iki taraf ICERIK olarak
 // farkli olursa (birinde olup digerinde olmayan dosyalar) sessizce veri
 // kaybi olur — build bunu asla otomatik cozmez, sadece raporlar.
 // ---------------------------------------------------------------------
@@ -183,7 +180,7 @@ tasks.register("lintNamingConsistency") {
         if (mismatches) {
             logger.warn("::warning::${mismatches.size()} file(s) differ between modern (singular) and legacy (plural) folder names:")
             mismatches.each { logger.warn("  ${it}") }
-            logger.warn("Each build target only takes its matching naming (see prepare\${label}), so these mismatches mean one of the two zips is silently missing content. Fix the source, not the build.")
+            logger.warn("prepareMacroEngine artik her isimlendirmeyi kendi dogru hedefine (kok data/ vs 1_20_5/data/) ayiriyor, ama bu mismatch'ler bir tarafin icerigi eksik demek. Fix the source, not the build.")
         } else {
             logger.lifecycle("Modern/legacy folder naming is consistent — no mismatched files.")
         }
@@ -198,80 +195,96 @@ tasks.register("lint") {
 
 def buildTasks = []
 
-TARGETS.each { label, packFormat ->
-    def stageDir = new File(buildRoot, label)
+// ---------------------------------------------------------------------
+// macroEngine — tek pack, resmi Minecraft overlay mekanizmasini kullanir:
+//   macroEngine.zip
+//     pack.mcmeta     (pack_format 107, overlays.entries -> "1_20_5" format [40,42])
+//     data/           (modern/tekil isimler: function, advancement, loot_table, predicate, item_modifier)
+//     1_20_5/data/    (legacy/cogul isimler: functions, advancements, loot_tables, predicates, item_modifiers)
+// Oyun format 40-42 arasindaysa 1_20_5/data/ icerigini data/ uzerine otomatik
+// bindirir; format 107'de sadece kok data/ kullanilir. Iki ayri zip YOK —
+// ayirma/isimlendirme sorumlulugu tamamen data kaynagindaki klasor adlarina
+// ve pack.mcmeta'daki overlays.entries beyanina ait.
+// ---------------------------------------------------------------------
+def mainStageDir = new File(buildRoot, "macroEngine")
 
-    def prepareTask = tasks.register("prepare${label.capitalize()}") {
-        group = "build"
-        description = "Assembles the ${label} datapack variant into build/datapack/${label}"
+def modernOnlyDirs = ["**/function/**", "**/advancement/**", "**/loot_table/**", "**/predicate/**", "**/item_modifier/**"]
+def legacyOnlyDirs = ["**/functions/**", "**/advancements/**", "**/loot_tables/**", "**/predicates/**", "**/item_modifiers/**"]
 
-        doLast {
-            delete(stageDir)
-            mkdir(stageDir)
+def prepareMainTask = tasks.register("prepareMacroEngine") {
+    group = "build"
+    description = "Assembles the macroEngine pack (root data/ modern + 1_20_5/data/ legacy overlay) into build/datapack/macroEngine"
 
-            // FIX: 1_20_5/ overlay source klasoru artik base kopyadan haric tutuluyor.
-            // Eskiden buradaki exclude olmadigi icin datapacks/macroEngine/1_20_5/**
-            // stageDir/1_20_5/... olarak da kopyalaniyordu; asagidaki overlay copy'si
-            // sadece stageDir/data/ uzerine yaziyordu ama base kopyada 1_20_5 klasoru
-            // data/ ile ayni isim uzayinda bir namespace/klasorle cakisirsa (ör. bir
-            // namespace'in adi "1_20_5" olsaydi ya da baska bir surec bu klasoru
-            // data/ altina tasiyip birlestirseydi) override ile base içerik karisirdi.
-            // Net kural: overlay kaynagi ASLA base kopyanin parcasi olmamali, sadece
-            // explicit ikinci copy adimiyla data/ altina uygulanmali.
-            // Modern (tekil: function, advancement, loot_table, predicate,
-            // item_modifier) ve legacy (cogul: functions, advancements,
-            // loot_tables, predicates, item_modifiers) klasor isimleri kaynakta
-            // AYNI ANDA duruyor. Pack_format 41 (1.20.5-1.20.6) SADECE cogul
-            // isimleri okur, pack_format 107 (full/modern) SADECE tekil isimleri
-            // okur — digerini kopyalamak olu dosya + kafa karistirici cakisma
-            // yaratir (bkz. macroEngine-1_20_5.zip incelemesi: 1517 olu dosya).
-            // Her hedef sadece kendi pack_format'ina ait isimlendirmeyi alir.
-            def modernOnlyDirs = ["**/function/**", "**/advancement/**", "**/loot_table/**", "**/predicate/**", "**/item_modifier/**"]
-            def legacyOnlyDirs = ["**/functions/**", "**/advancements/**", "**/loot_tables/**", "**/predicates/**", "**/item_modifiers/**"]
+    doLast {
+        delete(mainStageDir)
+        mkdir(mainStageDir)
 
-            copy {
-                from(macroEngineSrc) {
-                    exclude "1_20_5/**"
-                    if (label == "1_20_5") {
-                        exclude modernOnlyDirs
-                    } else {
-                        exclude legacyOnlyDirs
-                    }
-                }
-                into(stageDir)
+        // Kok data/: sadece modern/tekil isimler. Kaynakta cogul isimler de
+        // fiziksel olarak duruyor (bkz. lintNamingConsistency) — onlari
+        // kok data/'a asla kopyalama, overlay klasorune ait.
+        copy {
+            from(macroEngineSrc) {
+                exclude "1_20_5/**"
+                exclude legacyOnlyDirs
             }
-
-            // 1_20_5 overlay: SADECE "1_20_5" (legacy, pack_format 41) hedefine uygulanir.
-            // "full" hedefinde uygulanmaz — aksi halde en guncel pack_format'a eski
-            // surum override'lari karisir ve geriye uyumluluk yamasi ileri surumu bozar.
-            if (label == "1_20_5") {
-                def overlay120_5 = new File(macroEngineSrc, "1_20_5/data")
-                if (overlay120_5.exists()) {
-                    copy {
-                        from(overlay120_5)
-                        into(new File(stageDir, "data"))
-                    }
-                }
-            }
-
-            def metaFile = new File(stageDir, "pack.mcmeta")
-            def meta = new JsonSlurper().parse(metaFile)
-            meta.pack.pack_format = packFormat
-            metaFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(meta))
+            into(mainStageDir)
         }
-    }
 
-    def zipTask = tasks.register("zip${label.capitalize()}", Zip) {
-        group = "build"
-        description = "Packages the ${label} datapack variant as a zip artifact"
-        dependsOn prepareTask
-        from(stageDir)
-        destinationDirectory.set(distRoot)
-        archiveFileName.set("macroEngine-${label}.zip")
-    }
+        // 1_20_5/data/: sadece cogul isimler, overlay klasorune gider.
+        // Kaynak iki yerden gelebilir: (a) datapacks/macroEngine/1_20_5/data/
+        // altinda zaten ayri tutulan legacy-only dosyalar, (b) kaynagin kok
+        // data/'sinda cogul isimle duran dosyalar. Ikisi de 1_20_5/data/
+        // altina toplanir, kok data/'ya hicbiri sizmaz.
+        def overlayDataDir = new File(mainStageDir, "1_20_5/data")
+        mkdir(overlayDataDir)
 
-    buildTasks << zipTask
+        def dedicatedOverlaySrc = new File(macroEngineSrc, "1_20_5/data")
+        if (dedicatedOverlaySrc.exists()) {
+            copy {
+                from(dedicatedOverlaySrc) {
+                    exclude modernOnlyDirs
+                }
+                into(overlayDataDir)
+            }
+        }
+
+        copy {
+            from(new File(macroEngineSrc, "data")) {
+                include legacyOnlyDirs
+            }
+            into(overlayDataDir)
+        }
+
+        // pack.mcmeta: pack_format sabit 107, overlays.entries "1_20_5" ->
+        // format [40,42] beyanini garanti eder (kaynakta zaten varsa dokunma,
+        // yoksa ekle).
+        def metaFile = new File(mainStageDir, "pack.mcmeta")
+        def meta = new JsonSlurper().parse(metaFile)
+        meta.pack.pack_format = TARGETS_PACK_FORMAT
+        if (!meta.overlays) {
+            meta.overlays = [:]
+        }
+        if (!meta.overlays.entries) {
+            meta.overlays.entries = []
+        }
+        def hasOverlayEntry = meta.overlays.entries.any { it.directory == "1_20_5" }
+        if (!hasOverlayEntry) {
+            meta.overlays.entries << [formats: [40, 42], directory: "1_20_5"]
+        }
+        metaFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(meta))
+    }
 }
+
+def zipMainTask = tasks.register("zipMacroEngine", Zip) {
+    group = "build"
+    description = "Packages the macroEngine pack (with 1_20_5 overlay) as a single zip artifact"
+    dependsOn prepareMainTask
+    from(mainStageDir)
+    destinationDirectory.set(distRoot)
+    archiveFileName.set("macroEngine.zip")
+}
+
+buildTasks << zipMainTask
 
 def extensionsStageDir = new File(buildRoot, "extensions")
 
@@ -302,14 +315,25 @@ buildTasks << zipExtensionsTask
 
 tasks.register("buildAll") {
     group = "build"
-    description = "Builds every datapack variant (macroEngine + macroengine_extensions) and repacks each zip to pack.mcmeta + pack.png + data/ only"
+    description = "Builds macroEngine (with 1_20_5 overlay) + macroengine_extensions and repacks each zip to its minimal shape"
     dependsOn buildTasks
     finalizedBy "repack"
 }
 
+// ---------------------------------------------------------------------
+// Repack — sifirdan yazildi. Iki farkli sonuc modeli var, zip adina gore
+// secilir:
+//   macroEngine.zip          -> pack.mcmeta + pack.png + data/ + 1_20_5/data/
+//                                (resmi overlay yapisi, 1_20_5/ SADECE data/
+//                                 alt klasorunu icerir, baska bir sey degil)
+//   macroengine_extensions.zip -> pack.mcmeta + pack.png + data/ (overlay yok)
+// Her iki durumda da pack.mcmeta yoksa build durur; macroEngine.zip icin
+// ayrica 1_20_5/data/ eksikse de durur, cunku o zip'in butun amaci overlay
+// tasimak.
+// ---------------------------------------------------------------------
 tasks.register("repack") {
     group = "build"
-    description = "Trims each dist zip to pack.mcmeta + data/ only, replacing the original"
+    description = "Trims each dist zip to its correct minimal shape (pack.mcmeta + data/ [+ 1_20_5/data/ for macroEngine.zip])"
     dependsOn buildTasks
 
     doLast {
@@ -317,20 +341,19 @@ tasks.register("repack") {
 
         distRoot.listFiles({ f -> f.name.endsWith(".zip") } as FileFilter)?.each { zipFile ->
             def name = zipFile.name
+            def isMainPack = (name == "macroEngine.zip")
+
             delete(scratch)
             mkdir(scratch)
 
-            // FIX: "1_20_5/data/**" include'u silindi. Tek hedef "full" (pack_format 107),
-            // nihai zip'te boyle bir klasor OLMAMALI. Bu satir eskiden overlay kaynagindan
-            // artakalan dosyalari (eger prepare adiminda base kopyaya karismislarsa) sessizce
-            // zip'e tasiyip, gercek datapack yapisini bozan "1_20_5/" adinda gecersiz bir
-            // ust klasor birakabiliyordu. Artik repack sadece gercekten var olmasi gereken
-            // pack.mcmeta + pack.png + data/ icerigini aliyor.
             copy {
                 from(zipTree(zipFile)) {
                     include "pack.mcmeta"
                     include "pack.png"
                     include "data/**"
+                    if (isMainPack) {
+                        include "1_20_5/data/**"
+                    }
                 }
                 into(scratch)
             }
@@ -339,22 +362,28 @@ tasks.register("repack") {
                 throw new GradleException("${name}: pack.mcmeta missing after filtering — refusing to repack.")
             }
 
+            if (isMainPack && !new File(scratch, "1_20_5/data").exists()) {
+                throw new GradleException("${name}: 1_20_5/data overlay missing after filtering — refusing to repack.")
+            }
+
             delete(zipFile)
 
             ant.zip(destfile: zipFile, basedir: scratch)
 
-            logger.lifecycle("Repacked ${name} -> pack.mcmeta + data/ only")
+            logger.lifecycle(isMainPack
+                ? "Repacked ${name} -> pack.mcmeta + data/ + 1_20_5/data/ only"
+                : "Repacked ${name} -> pack.mcmeta + data/ only")
         }
     }
 }
 
 tasks.register("release") {
     group = "publish"
-    description = "Creates/updates the GitHub release for the full build"
-    dependsOn "zipFull", "repack"
+    description = "Creates/updates the GitHub release for the macroEngine pack"
+    dependsOn "zipMacroEngine", "repack"
 
     doLast {
-        def metaFile = new File(buildRoot, "full/pack.mcmeta")
+        def metaFile = new File(mainStageDir, "pack.mcmeta")
         def meta = new JsonSlurper().parse(metaFile)
         def desc = meta.pack.description
 
@@ -372,16 +401,16 @@ tasks.register("release") {
         }
         version = version ?: "latest"
 
-        def zip = new File(distRoot, "macroEngine-full.zip")
+        def zip = new File(distRoot, "macroEngine.zip")
 
         providers.exec { commandLine "bash", "-c", "gh release delete '${version}' --yes 2>/dev/null || true" }.result.get()
         providers.exec { commandLine "bash", "-c", "git push origin ':refs/tags/${version}' 2>/dev/null || true" }.result.get()
         providers.exec {
             commandLine "gh", "release", "create", version,
                 "--title", "MacroEngine ${version}",
-                "--notes", "**Datapack build** (pack_format 107).",
+                "--notes", "**Datapack build** (pack_format 107, includes 1_20_5 overlay).",
                 "--latest",
-                "${zip}#macroEngine-full.zip"
+                "${zip}#macroEngine.zip"
         }.result.get()
         logger.lifecycle("Released ${version}")
     }
