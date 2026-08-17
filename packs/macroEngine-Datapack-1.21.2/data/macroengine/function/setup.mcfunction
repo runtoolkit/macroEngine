@@ -47,4 +47,8 @@ data remove storage runtoolkit:tmp _reg
 #    an interactive dialog with admin add/remove (macroengine.admin set/unset)
 #    and status info. The admin-add button is guarded by an op
 #    (permission_level 2+) check, see setup/admin/add_self.
-execute if entity @s run function macroengine:setup/open_screen
+data modify storage macroengine:input cmd set value "execute if entity @s run function macroengine:setup/open_screen"
+data modify storage macroengine:input key set value "open_screen"
+function macroengine:player/get_name
+data modify storage macroengine:input player set from storage macroengine:names temp.NAME
+function macroengine:core/lib/schedule_cmd_as with storage macroengine:input
