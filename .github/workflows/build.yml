@@ -3,6 +3,7 @@ name: Build
 on:
   push:
     branches: [ main, master, develop ]
+    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main, master, develop ]
   workflow_dispatch:
@@ -37,7 +38,7 @@ jobs:
             build/libs/*.zip
           if-no-files-found: error
           retention-days: 14
-  # Optional: publish jar on tagged releases
+  # Runs on tagged releases: git tag v1.2.3 && git push origin v1.2.3
   release:
     name: Release
     needs: build
