@@ -60,7 +60,7 @@ jobs:
       - name: Build release
         run: ./gradlew build --stacktrace --no-daemon
       - name: Package datapack/resourcepack zips
-        run: ./gradlew packZips --stacktrace --no-daemon
+        run: chmod +x gradlew && ./gradlew packZips --stacktrace --no-daemon
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
