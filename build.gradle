@@ -84,8 +84,44 @@ tasks.register("zipResourcepack", Zip) {
 	destinationDirectory.set(layout.buildDirectory.dir("libs"))
 }
 
+tasks.register("zipDatapack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Datapack-1.21.2 as a .zip"
+	onlyIf { datapackSrc1212.exists() }
+	from(datapackSrc1212)
+	archiveFileName.set("macroEngine-Datapack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipResourcepack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Resourcepack-1.21.2 as a .zip"
+	onlyIf { resourcepackSrc1212.exists() }
+	from(resourcepackSrc1212)
+	archiveFileName.set("macroEngine-Resourcepack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipDatapack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Datapack-1.21.2 as a .zip"
+	onlyIf { datapackSrc1212.exists() }
+	from(datapackSrc1212)
+	archiveFileName.set("macroEngine-Datapack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipResourcepack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Resourcepack-1.21.2 as a .zip"
+	onlyIf { resourcepackSrc1212.exists() }
+	from(resourcepackSrc1212)
+	archiveFileName.set("macroEngine-Resourcepack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
 tasks.register("packZips") {
 	group = "build"
 	description = "Runs zipDatapack and zipResourcepack. Intended to run as its own step, after ./gradlew build has completed."
-	dependsOn "zipDatapack", "zipResourcepack"
+	dependsOn "zipDatapack", "zipResourcepack", "zipDatapack1212", "zipResourcepack1212", "zipDatapack1212", "zipResourcepack1212"
 }
