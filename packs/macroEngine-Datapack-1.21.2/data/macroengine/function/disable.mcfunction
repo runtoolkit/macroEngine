@@ -1,3 +1,3 @@
 function macroengine:core/disable/main
 
-tellraw @s [{"text":"To restart:"}," ",{"text":"/datapack enable 'file/macroEngine.zip'","color":"aqua","bold":true,"italic":false,"clickEvent": {"action": "run_command", "value": "/datapack enable 'file/macroEngine.zip'"}},", ",{"text":"/datapack enable 'file/macroEngine'","color":"aqua","bold":true,"italic":false,"clickEvent": {"action": "run_command", "value": "/datapack enable 'file/macroEngine'"}}," or",{"text":"/datapack enable 'file/macroEngine-full.zip'","color":"aqua","bold":true,"italic":false,"clickEvent": {"action": "run_command", "value": "/datapack enable 'file/macroEngine-full.zip'"}}]
+tellraw @s [{"text":"To restart:"}," ",{"text":"/datapack enable 'file/macroEngine-Datapack-1.21.2.zip'","color":"aqua","bold":true,"italic":false,"clickEvent": {"action": "run_command", "value": "/datapack enable 'file/macroEngine-Datapack-1.21.2.zip'"}}]
