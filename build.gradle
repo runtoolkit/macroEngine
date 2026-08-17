@@ -1,0 +1,127 @@
+plugins {
+	id 'fabric-loom' version '1.9-SNAPSHOT'
+	id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	inputs.property 'version', project.version
+	filesMatching('fabric.mod.json') {
+		expand version: project.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	from('LICENSE') {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+}
+
+publishing {
+	publications {
+		create('mavenJava', MavenPublication) {
+			artifactId = project.archives_base_name
+			from components.java
+		}
+	}
+}
+
+// =====================================================================
+// Datapack / Resourcepack zip packaging — standalone task.
+// Not wired into build/jar; run explicitly, e.g. as a separate CI step
+// after `./gradlew build`:  ./gradlew packZips
+//
+// Zips are written straight to build/libs/, run AFTER `build` has
+// already finished so remapJar/assemble can't wipe them out.
+// =====================================================================
+
+def datapackSrc     = file("packs/macroEngine-Datapack")
+def resourcepackSrc = file("packs/macroEngine-Resourcepack")
+
+tasks.register("zipDatapack", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Datapack as a .zip"
+	onlyIf { datapackSrc.exists() }
+	from(datapackSrc)
+	archiveFileName.set("macroEngine-Datapack.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipResourcepack", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Resourcepack as a .zip"
+	onlyIf { resourcepackSrc.exists() }
+	from(resourcepackSrc)
+	archiveFileName.set("macroEngine-Resourcepack.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipDatapack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Datapack-1.21.2 as a .zip"
+	onlyIf { datapackSrc1212.exists() }
+	from(datapackSrc1212)
+	archiveFileName.set("macroEngine-Datapack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipResourcepack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Resourcepack-1.21.2 as a .zip"
+	onlyIf { resourcepackSrc1212.exists() }
+	from(resourcepackSrc1212)
+	archiveFileName.set("macroEngine-Resourcepack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipDatapack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Datapack-1.21.2 as a .zip"
+	onlyIf { datapackSrc1212.exists() }
+	from(datapackSrc1212)
+	archiveFileName.set("macroEngine-Datapack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("zipResourcepack1212", Zip) {
+	group = "build"
+	description = "Packages packs/macroEngine-Resourcepack-1.21.2 as a .zip"
+	onlyIf { resourcepackSrc1212.exists() }
+	from(resourcepackSrc1212)
+	archiveFileName.set("macroEngine-Resourcepack-1.21.2.zip")
+	destinationDirectory.set(layout.buildDirectory.dir("libs"))
+}
+
+tasks.register("packZips") {
+	group = "build"
+	description = "Runs zipDatapack and zipResourcepack. Intended to run as its own step, after ./gradlew build has completed."
+	dependsOn "zipDatapack", "zipResourcepack", "zipDatapack1212", "zipResourcepack1212", "zipDatapack1212", "zipResourcepack1212"
+}
