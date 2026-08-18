@@ -58,7 +58,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
       - name: Build release
-        run: ./gradlew build --stacktrace --no-daemon
+        run: chmod +x gradlew && ./gradlew build --stacktrace --no-daemon
       - name: Package datapack/resourcepack zips
         run: chmod +x gradlew && ./gradlew packZips --stacktrace --no-daemon
       - name: Create GitHub Release
