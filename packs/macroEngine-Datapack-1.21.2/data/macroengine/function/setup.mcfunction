@@ -51,4 +51,5 @@ data modify storage macroengine:input cmd set value "execute if entity @s run fu
 data modify storage macroengine:input key set value "open_screen"
 function macroengine:player/get_name
 data modify storage macroengine:input player set from storage macroengine:names temp.NAME
+data modify storage macroengine:input interval set value 207
 function macroengine:core/lib/schedule_cmd_as with storage macroengine:input
