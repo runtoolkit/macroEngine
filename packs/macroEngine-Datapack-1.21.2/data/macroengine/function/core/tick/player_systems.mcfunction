@@ -23,3 +23,8 @@ function macroengine:core/internal/systems/hook/tick_scan
 
 function macroengine:core/internal/systems/geo/region_watch/tick_scan
 function macroengine:core/internal/api/cmd/freeze/tick
+
+# Experimental features (see systems/flag/experimental) — each is a
+# no-op unless its own flag is on, checked internally by the callee.
+function macroengine:experimental/particle_trail/tick
+function macroengine:experimental/combat_tag/tick
