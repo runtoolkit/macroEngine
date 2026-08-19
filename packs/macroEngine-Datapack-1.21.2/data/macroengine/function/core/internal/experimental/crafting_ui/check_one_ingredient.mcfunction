@@ -4,5 +4,5 @@
 # how many the caller holds, same trick as player/inv/count_item.mcfunction.
 
 scoreboard players set $cui_have macroengine.tmp 0
-$execute store result score $cui_have macroengine.tmp run clear @s $(item) 0
+$execute store result score $cui_have macroengine.tmp run clear @s $(item) 1
 $execute unless score $cui_have macroengine.tmp matches $(count).. run data modify storage macroengine:engine _crafting_ui.ok set value 0b
