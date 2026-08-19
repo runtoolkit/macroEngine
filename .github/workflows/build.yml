@@ -30,7 +30,7 @@ jobs:
       - name: Package datapack/resourcepack zips
         run: ./gradlew packZips --stacktrace --no-daemon
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macroengine-${{ github.sha }}
           path: |
