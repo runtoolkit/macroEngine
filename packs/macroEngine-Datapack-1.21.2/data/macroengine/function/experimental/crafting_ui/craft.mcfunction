@@ -1,10 +1,4 @@
 # macroengine:experimental/crafting_ui/craft [MACRO]
-# Attempts to craft the given recipe id. Looks up the recipe definition
-# from experimental/crafting_ui/recipes.mcfunction (storage-based table),
-# checks the caller has every required ingredient in sufficient count,
-# clears them, and gives the result. All-or-nothing — nothing is
-# consumed if any ingredient is missing.
-#
 # Usage:  function macroengine:experimental/crafting_ui/craft {recipe:"example"}
 # Caller: any player
 
@@ -17,9 +11,12 @@ $execute unless data storage macroengine:engine _crafting_ui.recipes.$(recipe) r
 
 $data modify storage macroengine:engine _crafting_ui.active set from storage macroengine:engine _crafting_ui.recipes.$(recipe)
 
-# Check every ingredient is present in sufficient count (all-or-nothing).
+# Check every ingredient (all-or-nothing). Uses a working copy so the
+# real ingredients list is still available for consume below.
 data modify storage macroengine:engine _crafting_ui.ok set value 1b
+data remove storage macroengine:engine _cui_check
 function macroengine:core/internal/experimental/crafting_ui/check_ingredients with storage macroengine:engine _crafting_ui.active
+data remove storage macroengine:engine _cui_check
 
 execute unless data storage macroengine:engine _crafting_ui{ok:1b} run tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"missing ingredients.","color":"red"}]
 execute unless data storage macroengine:engine _crafting_ui{ok:1b} run data remove storage macroengine:engine _crafting_ui

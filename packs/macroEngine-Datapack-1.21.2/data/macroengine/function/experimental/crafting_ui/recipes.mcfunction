@@ -11,4 +11,4 @@
 execute unless data storage macroengine:engine _crafting_ui run data modify storage macroengine:engine _crafting_ui set value {}
 data modify storage macroengine:engine _crafting_ui.recipes set value {}
 
-data modify storage macroengine:engine _crafting_ui.recipes.example set value {ingredients:[{item:"minecraft:iron_ingot",count:2},{item:"minecraft:stick",count:1}],result:{item:"minecraft:shears",count:1}}
+function #macroengine:cui/load_recipes
